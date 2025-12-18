@@ -5,7 +5,7 @@
 #include <PubSubClient.h> 
 
 #include "wifi.h"
-#include "sensors.h"
+#include "sensor.h"
 
 
 namespace rpz{

@@ -6,7 +6,7 @@
 
 #include "device.h"
 #include "module.h"
-#include "sensors.h"
+#include "sensor.h"
 #include "utils.h"
 
 #include <ArduinoJson.h>

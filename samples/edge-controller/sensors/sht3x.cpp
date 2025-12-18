@@ -1,4 +1,4 @@
-#include "sensors.h" 
+#include "sensor.h" 
 
 #include <Wire.h>
 #include "Adafruit_SHT31.h"
@@ -14,7 +14,7 @@ const PROGMEM char *SEN_MSG  = R"({"temperature":%f, "humidity":%f})";
 Adafruit_SHT31 sht3x = Adafruit_SHT31();
 
 
-void Sensors::init(){
+void Sensor::init(){
     Wire.begin(4, 16); //SDA=GPIO4  SCL=GPIO16 
 
     if (!sht3x.begin(0x44)) {   // Set to 0x45 for alternate i2c addr
@@ -23,7 +23,7 @@ void Sensors::init(){
         Serial.println("SHT3x sensor initialized.");
 }
 
-char * Sensors::read(){
+char * Sensor::read(){
     float temp = sht3x.readTemperature();
     float humidity = sht3x.readHumidity();
 
