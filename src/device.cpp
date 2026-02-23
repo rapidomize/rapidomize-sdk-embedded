@@ -5,68 +5,51 @@
 #include <memory>
 
 #include "device.h"
-#include "module.h"
-#include "sensor.h"
+#include "peripheral.h"
 #include "utils.h"
+#include "pzem01x.h"
+#include "sht3x.h"
+#include "relay.h"
+#include "switch.h"
 
 #include <ArduinoJson.h>
 
-
-#define LED 2
-#define BUZZER 12
 
 rpz::Device device;
 
 namespace rpz{
 
+const bool DEBUG=true;
 
 const PROGMEM char *STATE_MSG = R"({"msg":{"_evt":"circuit", "state":%d},"op":2})";
 //FIXME: format
 const PROGMEM char *ACK_MSG = R"({"msg":{"n":"circuit", "v":%d},"op":2})";
 
+const PROGMEM char *PERIPHERALS = R"({"msg":{"n":"circuit", "v":%d},"op":2})";
+
 void Device::init(){
-    wifi.init(&prefs);
-
-    mqttClient.setClient(wifi.wifiClient);
-
-    Serial.println(F("IoT Edge is ready to connect"));
-
-    alarms[0] = false; alarms[1]=false;
+    memset(peripherals, 0, MAX_PERIPHERALS);
+    peripherals[senscnt++] = new PZEM01x(&prefs);
+    peripherals[senscnt++] = new Sht3x(&prefs);
+    peripherals[senscnt++] = new Switch(&prefs);
+    peripherals[senscnt++] = new Switch(&prefs,2);
+    /* peripherals[senscnt++] = new Relay(&prefs);
+    peripherals[senscnt++] = new Relay(&prefs,2); */
+    for(int i=0; i < MAX_PERIPHERALS; i++){
+        peripherals[i]->init(nullptr);
+    }
 
     pinMode(LED, OUTPUT);
     pinMode(BUZZER, OUTPUT);
     //i2c_master_init();
-    sensors.init();
+
+    conprv.init(&mqttClient, peripherals, &prefs);
+    Serial.println(F("IoT Edge is ready to connect"));
 }
 
-
-bool Device::connect(){
-    if(!mqttClient.connected()){
-        Serial.printf(PSTR("\nConnecting to MQTT broker: ssl://%s:%d, with ClientID: %s Username: %s Password: %s topic: %s \n"), 
-            wifi.host.c_str(), wifi.port, wifi.clientId.c_str(), wifi.username.c_str(), wifi.password.c_str(), wifi.topic.c_str());
-
-        if(!wifi.isConnected())  wifi.connectMQTT();
-
-        if(mqttClient.connect(wifi.clientId.c_str(), wifi.username.c_str(), wifi.password.c_str())){//mqttClient.connect().connect(HOST, PORT)){
-            Utils::buzzer(2);
-           
-            // subscribe to a topic:
-            //Serial.printf(PSTR("Subscribing to topic: %s"), subtopic);
-            //mqttClient.subscribe(subtopic);
-            prefs.putString("clientId", wifi.clientId);
-            prefs.putString("username", wifi.username);
-            prefs.putString("password", wifi.password);
-            prefs.putString("topic", wifi.topic);
-            prefs.putShort("tls", wifi.tls);
-            return true;
-        }else
-            Serial.printf(PSTR("Failed connecting to MQTT broker: ssl://%s:%d\n"), wifi.host.c_str(), wifi.port);
-    }
-    return true;
-}
 
 //we should create topic & payload copy of the values if they are required after the callback returns
-void Device::on_msg(const char* topic, byte* payload, unsigned int length) {
+void Device::recv(const char* topic, byte* payload, unsigned int length) {
     // we received a message, print out the topic and contents
     Serial.printf(PSTR("Received topic: %s, len: %d, payload: %s\n"), topic, length, payload);
 
@@ -116,6 +99,21 @@ void Device::on_msg(const char* topic, byte* payload, unsigned int length) {
     char jmsg[128];
     sprintf(jmsg, ACK_MSG, 0);
     device.send(jmsg, acktopic);
+    
+    /* size_t loc = incoming.find("msg");
+    if(loc > 0){
+        loc = incoming.find("\"n\"", loc);
+        if(loc > 0){
+            loc = incoming.find("\"", loc+3);
+            if(loc > 0){
+                size_t en = incoming.find("\"", loc+1);
+                if(en > 0){
+                    std::string sen = incoming.substr(loc , en);
+                    loc = incoming.find("\"op\"", en);
+                }
+            }
+        }
+    } */
 }
 
 void Device::send(const char* msg, const char* topic) {
@@ -129,12 +127,11 @@ void Device::send(const char* msg, const char* topic) {
 }
 
 void Device::update(){
-    wifi.handleAPReq();
-    if(!wifi.hasmqtt){
-        Serial.print(".");
-    }else{
-        Serial.print(".");
-        if(connect()){
+    Serial.print(".");
+    conprv.events.send("my event content");//,"myevent",millis());
+    if(0)
+    if(conprv.hasSetup){
+        if(mqttClient.connected()){
             mqttClient.loop();
 
             const unsigned long now = millis();
@@ -142,12 +139,27 @@ void Device::update(){
                 // save the last time a message was sent
                 prev = now;
 
-                char * data = sensors.read();
-                if(data != nullptr)
-                    send(data, wifi.topic.c_str());
-                
+                char jreq[1024]; jreq[0]='[';
+                int size=1;
+                for(int i = 0; i < MAX_PERIPHERALS && peripherals[i] != nullptr; i++){
+                    char *data = peripherals[i]->read();
+                    if(data != nullptr){
+                        int dsz = strlen(data);
+                        strlcat(jreq, data, dsz);
+                        size += dsz;
+                    }
+                }
+                jreq[++size]=']';
+                jreq[size] = '\0';
+                send(jreq, conprv.topic.c_str());
             }
-        }
+        }else conprv.connectMQTT();
+    }
+
+    
+    if(indicate++ > 10){
+        Utils::indicate();
+        indicate = 0;
     }
 }
 

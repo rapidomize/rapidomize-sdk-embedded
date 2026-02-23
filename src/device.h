@@ -4,13 +4,15 @@
 #include <Preferences.h>
 #include <PubSubClient.h> 
 
-#include "wifi.h"
-#include "sensor.h"
+#include "provider.h"
+#include "peripheral.h"
 
 
 namespace rpz{
 
-typedef enum{
+#define RPZ_VERSION "0.7.5-b18"
+
+enum rpz_ops_t{
 
 	/* request ops */
 	RPZ_NOP=0x00,						/* 0.00 */
@@ -62,39 +64,45 @@ typedef enum{
 	RPZ_UNKNOWN=0xB4,		            /* 5.20 */
 
 	RPZ_UNDEFINED=0xFF
-}rpz_ops_t;    
+};    
 
 enum ALM{
     ALM_ACS712,
     ALM_OTHER
 };
 
+const int MAX_PERIPHERALS = 4;
+
 class Device{
     public:    
         Device(){}
-        void update();
-/*         void indicate();
-		void buzzer(int count); */
-        void init();
 
+		void init();
+		bool setup(bool setup=false);
+        void update();
+        
         bool circuit = false;
 
     private:
         bool connect();
-        static void on_msg(const char* topic, byte* payload, unsigned int length);
+        static void recv(const char* topic, byte* payload, unsigned int length);
         void send(const char* msg, const char* topic);
 
         const long interval = 10000;
         unsigned long prev = 0;
         int count = 0;
-        bool alarms[2];
         
 		String host;
 		int port;
+		bool hasSetup = false;
+		ConProvider conprv;
 		Preferences prefs;
-		Wifi wifi;
 		PubSubClient mqttClient;
-		Sensors sensors;
+		
+		Peripheral *peripherals[MAX_PERIPHERALS];
+		int senscnt = 0;
+		//just an indicator to show device is alive.
+		int indicate = 0;
 };
 
 } // namespace rpz

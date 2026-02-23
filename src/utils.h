@@ -10,9 +10,9 @@
 class Utils{
     public: 
         static void indicate(){
-            digitalWrite(BUZZER,HIGH);
-            delay(500);
-            digitalWrite(BUZZER,LOW);
+            digitalWrite(LED,HIGH);
+            delay(100);
+            digitalWrite(LED,LOW);
         }
 
         static void buzzer(int count){
