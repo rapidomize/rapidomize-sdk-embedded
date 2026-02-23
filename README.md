@@ -8,6 +8,21 @@ Use it with Rapidomize IoT platform or with any MQTT server.
 - [IoT Edge Controller: rpz-d2x2t2ux-we](https://rapidomize.com/docs/solutions/iot/device/rpz-d2x2t2ux-we/)
 
 
+# Features
+## Wifi Setup
+[Wifi Setup](/img/wifi.png)
+
+## MQTT Setup
+[MQTT Setup](/img/mqtt.png)
+
+## Peripheral H/W setup
+[Peripherals](/img/peripherals.png)
+
+## Firmware update - OTA & File
+[Firmware update](/img/update.png)
+
+## Local logs
+
 # Status
 version 0.7.5 - 'Dugong Weasel'
 
