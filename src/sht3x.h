@@ -12,9 +12,9 @@
 namespace rpz{
 
 
-const PROGMEM char *SEN_MSG  = R"({"temperature":%f, "humidity":%f})";   
+const char *SEN_MSG  = R"({"temperature":%f, "humidity":%f})";   
 
-const PROGMEM char *Sht3x_tmpl = R"(
+const char *Sht3x_tmpl = R"(
 <div  class="card">
     <div class="row pos-r"><h3>%s</h3><input type="checkbox" name="%s" %s  class="pos-a" style="right: 0px;"></div>
     <table>
@@ -44,6 +44,7 @@ class Sht3x: public Peripheral{
         sprintf(fr, Sht3x_tmpl, name.c_str(), name.c_str(), enabled?"checked":"");
         return fr;
     }
+
     void init(JsonDocument *jconf) {
         Peripheral::init(jconf);
         if(!enabled) return;
@@ -58,7 +59,7 @@ class Sht3x: public Peripheral{
 
     char * read(){
         if(!enabled) return nullptr;
-        
+
         float temp = sht3x.readTemperature();
         float humidity = sht3x.readHumidity();
 

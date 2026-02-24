@@ -8,7 +8,18 @@
 
 
 class Utils{
+
     public: 
+        void log(const char * fmt, ...){
+            va_list args;
+            char buf[1024];
+            va_start(args, fmt);
+            vsprintf(buf, fmt, args);
+            va_end(args);
+            Serial.println(buf);
+            if(ev)
+                ev->send(buf);
+        }
         static void indicate(){
             digitalWrite(LED,HIGH);
             delay(100);
@@ -23,6 +34,8 @@ class Utils{
                 delay(300); 
             }
         }
+
+        AsyncEventSource *ev;
 };
 
 #endif /* RPZ_UTILS_H_ */

@@ -7,7 +7,7 @@
 
 namespace rpz{
 
-const PROGMEM char *Relay_tmpl = R"(
+const char *Relay_tmpl = R"(
 <div  class="card">
     <div class="row pos-r"><h3>%s</h3><input type="checkbox" name="%s" %s  class="pos-a" style="right: 0px;"></div>
     <table>
@@ -20,6 +20,8 @@ const PROGMEM char *Relay_tmpl = R"(
     </table> 
 </div>  
 )"; 
+
+const char *RL_MSG  = R"({"%s":%d})";
 
 //https://rapidomize.com/docs/solutions/iot/device/rpz-d2x2t2ux-we/
 const int R1 = 2;  //GPIO2

@@ -30,8 +30,9 @@ class Peripheral{
                 Serial.printf(PSTR("Error parsing configuration for %s : %s\n"), name.c_str(), sconf.c_str());
                 return false;
             }
-            Serial.printf(PSTR("\nconfig: %d, %s\n"), (bool)conf[name.c_str()], sconf);
             conf[name.c_str()] = enabled = (bool)conf[name.c_str()] | false;
+            serializeJson(conf, sconf);
+            Serial.printf(PSTR("%s\n"), sconf.c_str());
             hasenabled = enabled;
             return true;
         }
@@ -43,10 +44,10 @@ class Peripheral{
             const JsonDocument _jconf = *jconf;
             hasenabled = enabled;
             enabled = conf[name.c_str()] = _jconf[name.c_str()] == "on";
-            String _conf;
-            serializeJson(conf, _conf);
-            Serial.printf(PSTR("\ninit1: %s\n"), _conf.c_str());
-            prefs->putString(name.c_str(), _conf.c_str());
+            String sconf;
+            serializeJson(conf, sconf);
+            Serial.printf(PSTR("\ninit1: %s\n"), sconf.c_str());
+            prefs->putString(name.c_str(), sconf.c_str());
         }
         virtual char * read(){
 			return nullptr;
@@ -57,8 +58,23 @@ class Peripheral{
         virtual void *exec(char *fn){
 			return nullptr;
 		}
+        
+        /* virtual bool hasev(){
+            if(triggered){
+                Serial.println("triggered");
+                unsigned long now = (unsigned long) (esp_timer_get_time() / 1000ULL);
+                if (now - lsttime > DEBOUNCE_DELAY ) {
+                    lsttime = now;
+                    Serial.println("triggered - true");
+                    return true;
+                }
+            }
+			return false;
+		} */
 
         virtual ~Peripheral() = default;
+
+        bool isr = false;
 
     protected:
         Preferences *prefs;
@@ -68,17 +84,6 @@ class Peripheral{
         char data[512];
         int seq;
         String name;
-
-        /* KV *getConf(const char *name){
-			for(int i=0; i< confSize; i++){
-				if(strcmp(name, conf[i].name))
-					return &conf[i];
-			}
-			return nullptr;
-		} */
-
-        
-
 };
 
 }

@@ -10,7 +10,7 @@
 
 namespace rpz{
 
-#define RPZ_VERSION "0.7.5-b18"
+#define RPZ_VERSION "0.7.5-b20"
 
 enum rpz_ops_t{
 

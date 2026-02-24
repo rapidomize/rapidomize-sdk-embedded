@@ -5,7 +5,7 @@
 
 namespace rpz{
 
-const PROGMEM char *main_tmpl = R"(
+const char *main_tmpl = R"(
 <!DOCTYPE html>
 <html lang='en'>
     <head>
@@ -166,12 +166,28 @@ const PROGMEM char *main_tmpl = R"(
                     <input type="submit"  value="Update" class="brdr" style="margin: 20px auto; width: 200px;">
                 </form>
             </div>
+            <input type="radio" class="tabs__radio" name="atabs" id="tab6">
+            <label for="tab6" class="tabs__label">Logs</label>
+            <div class="tabs__content">
+                <h2>Logs</h2>
+                <div id="evts" class="card column" style="padding-left: 20px;height: 200px;overflow-y: auto;"></div>
+            </div>
+            <input type="radio" class="tabs__radio" name="atabs" id="tab7">
+            <label for="tab7" class="tabs__label">Reset</label>
+            <div class="tabs__content">
+                <h2>Reset</h2>
+                <p>Reset the IoT Edge to it's factory settings</p>
+                <form id="reset" action="/reset" method="post" class="column mt-30">
+                    <input type="submit" value='Factory Reset' class="brdr" style="margin: 20px auto; width: 200px;">
+                </form>
+            </div>
         </div>
         <script>
             
             const forms = document.getElementsByTagName('form');
             const msg = document.getElementById('msg');
             for(let i=0; i < forms.length; i++){
+                if(forms[i].action.startsWith("/fw")) continue;
                 forms[i].addEventListener('submit', function (event) {
                     event.preventDefault();
                     event.stopPropagation();
@@ -219,8 +235,8 @@ const PROGMEM char *main_tmpl = R"(
             const evtSource = new EventSource("/evts");
             evtSource.onmessage = (event) => {
                 const eventList = document.getElementById("evts");
-                if(eventList.children.length > 10)
-                    eventList.innerHTML = '';
+                if(eventList.children.length > 100)
+                    eventList.firstChild.remove();
                 const newElement = document.createElement("li");
                 newElement.textContent = event.data;
                 eventList.appendChild(newElement);
@@ -233,7 +249,7 @@ const PROGMEM char *main_tmpl = R"(
 </html>
 )";
 
-const PROGMEM char *dash_tmpl = R"(
+const char *dash_tmpl = R"(
 <input type="radio" class="tabs__radio" name="atabs" id="tab1" checked>
 <label for="tab1" class="tabs__label">Home</label>
 <div class="tabs__content">
@@ -242,23 +258,23 @@ const PROGMEM char *dash_tmpl = R"(
         <tr><td>Firmware Version</td><td>%s</td></tr>
         <tr><td style="width: 150px;">CPU Freq</td><td>%dMHz</td></tr>
         <tr><td>Image Size</td><td>%dKB</td></tr>
+        <tr><td>IP Address</td><td>%s</td></tr>
     </table>
     <div class="cards mt-10">
         %s
     </div>
-    <h3 class="mt-30">Log</h3>
-    <div id="evts" class="card column" style="padding-left: 20px;height: 200px;"></div>
 </div>
 )";
 
-const PROGMEM char *dash_fr_tmpl = R"(
+const char *dash_fr_tmpl = R"(
 <div class="card">%s</div>
 )";
 
-const PROGMEM char *wifi_tmpl = R"(
+const char *wifi_tmpl = R"(
 <input type="radio" class="tabs__radio" name="atabs" id="tab2">
 <label for="tab2" class="tabs__label">WiFi</label>
 <div class="tabs__content">
+    <div class="row mt-10"><div style="margin-right: 10px;">IP:</div><div>%s</div></div>
     <form action="/wifi" method="post" class="column">
         <h2>Available WiFi Networks</h2>
         <p>Select a WiFi network and provide it's credentials</p>
@@ -275,7 +291,7 @@ const PROGMEM char *wifi_tmpl = R"(
 </div>
 )";
 
-const PROGMEM char *mqtt_tmpl = R"(
+const char *mqtt_tmpl = R"(
 <input type="radio" class="tabs__radio" name="atabs" id="tab3">
 <label for="tab3" class="tabs__label">MQTT</label>
 <div class="tabs__content">
@@ -311,7 +327,7 @@ const PROGMEM char *mqtt_tmpl = R"(
 </div>
 )";
 
-const PROGMEM char *peri_tmpl = R"(
+const char *peri_tmpl = R"(
 <input type="radio" class="tabs__radio" name="atabs" id="tab4">
 <label for="tab4" class="tabs__label">Peripherals</label>
 <div class="tabs__content">
@@ -327,8 +343,8 @@ const PROGMEM char *peri_tmpl = R"(
 </div>
 )";
 
-const PROGMEM char *ssid_tmpl = R"(<div><input type="radio" name="ssid" value="%s" %s> <label>%s</label></div>)";
-const PROGMEM char *success_pg = R"(
+const char *ssid_tmpl = R"(<div><input type="radio" name="ssid" value="%s" %s> <label>%s</label></div>)";
+const char *success_pg = R"(
 <!DOCTYPE html><html lang='en'>
 <head>
     <meta name='viewport' content='width=device-width'>

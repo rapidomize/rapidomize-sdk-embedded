@@ -5,15 +5,15 @@
 #include <AsyncTCP.h>
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
-// #include <WebServer.h>
 #include <PubSubClient.h>
 
 #include "peripheral.h"
+#include "utils.h"
 
 namespace rpz{
 
 //connection & config provider
-class ConProvider{
+class ConProvider: public Utils{
     public: 
         ConProvider(): server(80), host("ics.rapidomize.com"), port(8883), events("/evts"){
             server.addHandler(&events);
@@ -23,6 +23,7 @@ class ConProvider{
         bool connectMQTT(bool setup=false);
         bool connectWiFi(bool setup=false);
         void scan();
+        
 
         void homePage(AsyncWebServerRequest *request, int status=200, const char *err=nullptr);
         void err(const char *err);
@@ -33,9 +34,13 @@ class ConProvider{
         void onWifi(AsyncWebServerRequest *request);
         void onMqtt(AsyncWebServerRequest *request);
         void onPeri(AsyncWebServerRequest *request);
-        void onReqUpgrade();
-        void onUpgrade();
+        void onReset(AsyncWebServerRequest *request);
+        void onUpgrade(AsyncWebServerRequest *request);
         void toJson(AsyncWebServerRequest *request, JsonDocument &doc);
+
+        void initlog(){
+             Utils::ev = &events;
+        }
 
         void save();
 
@@ -61,7 +66,6 @@ class ConProvider{
         String wifi_ssid;
         String wifi_pwd;
 
-        // WebServer server;
         AsyncWebServer server;
         WiFiClient wifiClient; 
         PubSubClient *mqttClient;

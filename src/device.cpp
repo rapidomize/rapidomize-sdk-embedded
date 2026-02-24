@@ -20,14 +20,20 @@ rpz::Device device;
 namespace rpz{
 
 const bool DEBUG=true;
+const int  MAX_DATA=1024;
 
-const PROGMEM char *STATE_MSG = R"({"msg":{"_evt":"circuit", "state":%d},"op":2})";
+const char *STATE_MSG = R"({"msg":{"_evt":"circuit", "state":%d},"op":2})";
 //FIXME: format
-const PROGMEM char *ACK_MSG = R"({"msg":{"n":"circuit", "v":%d},"op":2})";
+const char *ACK_MSG = R"({"msg":{"n":"circuit", "v":%d},"op":2})";
 
-const PROGMEM char *PERIPHERALS = R"({"msg":{"n":"circuit", "v":%d},"op":2})";
+const char *PERIPHERALS = R"({"msg":{"n":"circuit", "v":%d},"op":2})";
 
 void Device::init(){
+    if (!prefs.begin("rpzc", false)) {
+        Serial.println("Failed to initialize NVS. Restarting...");
+        ESP.restart();
+    }
+
     memset(peripherals, 0, MAX_PERIPHERALS);
     peripherals[senscnt++] = new PZEM01x(&prefs);
     peripherals[senscnt++] = new Sht3x(&prefs);
@@ -119,39 +125,73 @@ void Device::recv(const char* topic, byte* payload, unsigned int length) {
 void Device::send(const char* msg, const char* topic) {
     
     if (mqttClient.connected()) {
-        Serial.printf(PSTR("\nmsg: %s\n"), msg);
-
+        //Serial.printf(PSTR("\nmsg: %s\n"), msg);
+        conprv.log(msg);
         mqttClient.publish(topic, msg);
     }else
-        Serial.println(F("not connected"));
+        conprv.log("MQTT is not connected, cannot send the msg %s", msg);
 }
 
 void Device::update(){
     Serial.print(".");
-    conprv.events.send("my event content");//,"myevent",millis());
-    if(0)
+    //conprv.events.send("my event content");//,"myevent",millis());
     if(conprv.hasSetup){
         if(mqttClient.connected()){
             mqttClient.loop();
 
+            char jreq[MAX_DATA]; jreq[0]='[';jreq[1]='\0';
+            int size=1;
+            int cnt=0;
+            for(int i = 0; i < MAX_PERIPHERALS && peripherals[i] != nullptr; i++){
+                if(peripherals[i]->isr){//&& peripherals[i]->hasev()
+                    char *data = peripherals[i]->read();
+                    if(data != nullptr){
+                        if(cnt > 0){
+                            jreq[size++]=','; jreq[size] = '\0';
+                        }
+                        int ssz = strlen(data);
+                        //Serial.printf(PSTR("\ndata: %s, len: %d\n"), data, ssz);
+                        
+                        strlcat(jreq, data, MAX_DATA);
+                        size += ssz;
+                        cnt++;
+                    }
+                }
+            }
+            if(cnt > 0){
+                jreq[size++]=']'; jreq[size] = '\0';
+                send(jreq, conprv.topic.c_str());
+            }
+
+            //report per defined interval
             const unsigned long now = millis();
             if (now - prev >= interval) {
                 // save the last time a message was sent
                 prev = now;
 
-                char jreq[1024]; jreq[0]='[';
-                int size=1;
+                jreq[0]='[';jreq[1]='\0';
+                size=1;
+                cnt=0;
                 for(int i = 0; i < MAX_PERIPHERALS && peripherals[i] != nullptr; i++){
+                    if(peripherals[i]->isr) continue; //skip if isr
+
                     char *data = peripherals[i]->read();
                     if(data != nullptr){
-                        int dsz = strlen(data);
-                        strlcat(jreq, data, dsz);
-                        size += dsz;
+                        if(cnt > 0){
+                            jreq[size++]=','; jreq[size] = '\0';
+                        }
+                        int ssz = strlen(data);
+                        Serial.printf(PSTR("\ndata: %s, len: %d\n"), data, ssz);
+                        
+                        strlcat(jreq, data, MAX_DATA);
+                        size += ssz;
+                        cnt++;
                     }
                 }
-                jreq[++size]=']';
-                jreq[size] = '\0';
-                send(jreq, conprv.topic.c_str());
+                if(cnt > 0){
+                    jreq[size++]=']'; jreq[size] = '\0';
+                    send(jreq, conprv.topic.c_str());
+                }
             }
         }else conprv.connectMQTT();
     }

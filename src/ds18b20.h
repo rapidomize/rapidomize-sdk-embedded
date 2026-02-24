@@ -9,7 +9,7 @@
 namespace rpz{
 
 
-const PROGMEM char *DS18B20_tmpl = R"(
+const char *DS18B20_tmpl = R"(
 <div  class="card">
     <div class="row pos-r"><h3>%s</h3><input type="checkbox" name="%s_act" %s  class="pos-a" style="right: 0px;"></div>
     <table>
@@ -19,7 +19,7 @@ const PROGMEM char *DS18B20_tmpl = R"(
 </div>  
 )";     
 
-const PROGMEM char *DS18B20_MSG  = R"({"temperature01":%f, "temperature02":%f})";       
+const char *DS18B20_MSG  = R"({"temperature01":%f, "temperature02":%f})";       
 
 class DS18B20: public Peripheral{
   public: 
