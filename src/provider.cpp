@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Update.h>
 // #include <ESPmDNS.h>
 
 #include <cstring>
@@ -46,21 +47,21 @@ void ConProvider::homePage(AsyncWebServerRequest *request, int status, const cha
 //page submitted
 char *ConProvider::getDash(){
   char *fr = (char *) malloc(4096);
-  sprintf(fr, dash_tmpl, "rpz-d2x2t2ux-we", RPZ_VERSION, ESP.getCpuFreqMHz(), ESP.getSketchSize()/1024, "");
+  sprintf(fr, dash_tmpl, "rpz-d2x2t2ux-we", RPZ_VERSION, ESP.getCpuFreqMHz(), ESP.getSketchSize()/1024, WiFi.localIP().toString().c_str(), "");
   return fr;
 }
 
 char * ConProvider::getWifi(){
-  String pssid;
+  String ssidlst;
   char *fr = (char *) malloc(4096);
   for(int i=0;i<ssid_cnt && i < 20; i++){
     Serial.println(ssids[i].c_str());
     sprintf(fr, ssid_tmpl, ssids[i].c_str(), (wifi_ssid.equals(ssids[i]))?"checked":"", ssids[i].c_str());
-    pssid += fr;
+    ssidlst += fr;
   }
 
   fr[0]='\0';
-  sprintf(fr, wifi_tmpl, pssid.c_str());
+  sprintf(fr, wifi_tmpl, WiFi.localIP().toString().c_str(), ssidlst.c_str());
   return fr;
 }
 
@@ -84,7 +85,7 @@ char *ConProvider::getPeri(){
 }
 
 void ConProvider::onWifi(AsyncWebServerRequest *request){
-  Serial.println(F("\nSetting up WiFi..."));
+  log("Setting up WiFi...");
   wifi_ssid.clear();
   wifi_pwd.clear();
 
@@ -105,7 +106,7 @@ void ConProvider::onWifi(AsyncWebServerRequest *request){
 }
 
 void ConProvider::onMqtt(AsyncWebServerRequest *request){
-  Serial.println(F("\nSetting up MQTT..."));
+  log("Setting up MQTT...");
 
   JsonDocument doc;
   toJson(request, doc);
@@ -124,7 +125,17 @@ void ConProvider::onMqtt(AsyncWebServerRequest *request){
        && username.length() != 0 && password.length() != 0
        && topic.length() != 0 && tls >= 0
        && connectMQTT(true)){
+      
+      //update prefs
+      prefs->putString("host", host);
+      prefs->putShort("port", port);
+      prefs->putString("clientId", clientId);
+      prefs->putString("username", username);
+      prefs->putString("password", password);
+      prefs->putString("topic", topic);
+      prefs->putShort("tls", tls);
       save();
+
       request->send(200, "application/json", "{}");
       return;
   } 
@@ -132,7 +143,7 @@ void ConProvider::onMqtt(AsyncWebServerRequest *request){
 }
 
 void ConProvider::onPeri(AsyncWebServerRequest *request){
-  Serial.println(F("\nSetting up Peripherals..."));
+  log("Setting up Peripherals...");
 
   JsonDocument doc;
   toJson(request, doc);
@@ -141,14 +152,32 @@ void ConProvider::onPeri(AsyncWebServerRequest *request){
     peripherals[i]->init(&doc);
   }
 
+  save();
   request->send(200, "application/json", "{}");
 }
 
-void ConProvider::onReqUpgrade(){
-  
+void ConProvider::onReset(AsyncWebServerRequest *request){
+  log("Resetting IoT Edge...");
+  prefs->clear();
+  delay(100);
+  request->send(200, "application/json", "{\"err\":\"Resetting IoT Edge...!\"}");
+  ESP.restart();
 }
 
-void ConProvider::onUpgrade(){
+void ConProvider::onUpgrade(AsyncWebServerRequest *request){
+  
+  //commit the prefs & restart
+  prefs->end();
+  delay(100);
+  ESP.restart();
+}
+
+//commit & restart
+//TODO: mutex lock?
+void ConProvider::save() {
+  prefs->end();
+  delay(100);
+  prefs->begin("rpzc", false);
 }
 
 void ConProvider::scan() {
@@ -159,9 +188,9 @@ void ConProvider::scan() {
   ssid_cnt = WiFi.scanNetworks(/*async=*/false, /*hidden=*/true);
 
   if (ssid_cnt == 0) {
-    Serial.println(F("No WIFI networks found"));
+    log("No WIFI networks found");
   } else if (ssid_cnt > 0) {
-    Serial.printf(PSTR("%d WIFI networks found:\n"), ssid_cnt);
+    log(PSTR("%d WIFI networks found:\n"), ssid_cnt);
   
     // Print unsorted scan results
     for (int8_t i = 0; i < ssid_cnt && i < 20; i++) {
@@ -196,28 +225,18 @@ void ConProvider::scan() {
     WiFi.scanDelete();
 
   } else {
-    Serial.printf(PSTR("WiFi scan error %d\n"), ssid_cnt);
+    log(PSTR("WiFi scan error %d\n"), ssid_cnt);
   }
 
   // Wait a bit before scanning again
   //delay(5000);
 }
 
-void ConProvider::save(){
-  //Utils::buzzer(2);
-  prefs->putString("host", host);
-  prefs->putShort("port", port);
-  prefs->putString("clientId", clientId);
-  prefs->putString("username", username);
-  prefs->putString("password", password);
-  prefs->putString("topic", topic);
-  prefs->putShort("tls", tls);
-}
-
 bool ConProvider::connectWiFi(bool setup){
     if(WiFi.isConnected() && WiFi.SSID() == wifi_ssid) return false;
     
-    Serial.printf(PSTR("Connecting to WiFi ssid: %s, pwd: %s\n"), wifi_ssid.c_str(), wifi_pwd.c_str());
+    log(PSTR("Connecting to WiFi ssid: %s, pwd: %s"), wifi_ssid.c_str(), wifi_pwd.c_str());
+
     WiFi.disconnect(true);  //disconnect from wifi AP to set wifi connection in STA
     //WiFi.mode(WIFI_AP_STA);    //init wifi mode
     WiFi.begin(wifi_ssid, wifi_pwd);
@@ -227,16 +246,16 @@ bool ConProvider::connectWiFi(bool setup){
       if(WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_DISCONNECTED){
           if(retry++ > 100){
             Utils::buzzer(5);
-            Serial.printf(PSTR("Invalid SSID/Password! %s!!!\n "), 
+            log(PSTR("Invalid SSID/Password! %s!!!"), 
                 WiFi.status() == WL_CONNECT_FAILED?"CONNECT_FAILED":WiFi.status() == WL_DISCONNECTED?"DISCONNECTED":"");
             return false;
           }
       } 
       delay(500);
-      Serial.printf(PSTR("%d, .. "), WiFi.status());
+      log(PSTR("WiFi status: %d, .. "), WiFi.status());
     }
 
-    Serial.printf(PSTR("\nConnected to %s IP address: %s\n"), wifi_ssid.c_str(), WiFi.localIP().toString().c_str());
+    log(PSTR("Connected to WiFi SSID %s IP address: %s"), wifi_ssid.c_str(), WiFi.localIP().toString().c_str());
     Utils::buzzer(2);
 
     /* if (MDNS.begin("rapidomize")) {
@@ -245,6 +264,7 @@ bool ConProvider::connectWiFi(bool setup){
 
     prefs->putString("wifi_ssid", wifi_ssid);
     prefs->putString("wifi_pwd", wifi_pwd);
+    save();
 
     haswifi = true;
     return true;
@@ -253,7 +273,7 @@ bool ConProvider::connectWiFi(bool setup){
 //connect to MQTT server
 bool ConProvider::connectMQTT(bool setup){
     if(host.length() == 0 || port == 0){
-      Serial.printf(PSTR("MQTT connection failed! Invalid Connection details: ssl://%s:%d\n"), host.c_str(), port);
+      log(PSTR("MQTT connection failed! Invalid Connection details: ssl://%s:%d"), host.c_str(), port);
       return false;
     } 
     // sslClient.setFingerprint(finger_print);
@@ -261,7 +281,8 @@ bool ConProvider::connectMQTT(bool setup){
     //sslClient.setInsecure();
     if(wifiClient.connected())  wifiClient.flush();
     wifiClient.stop();
-    Serial.printf(PSTR("Connecting to MQTT broker: ssl://%s:%d\n"), host.c_str(), port);
+    log(PSTR("Connecting to MQTT broker: ssl://%s:%d, with ClientID: %s Username: %s Password: %s topic: %s"), 
+            host.c_str(), port, clientId.c_str(), username.c_str(), password.c_str(), topic.c_str());
 
     int err;
     int count=0;
@@ -269,32 +290,27 @@ bool ConProvider::connectMQTT(bool setup){
       Serial.print("?");
       if (count++ > 5) {
           Utils::buzzer(5);
-          Serial.printf(PSTR("\nMQTT connection failed! Error code = %d\n"),  err);
+          log(PSTR("MQTT connection failed! Error code = %d"),  err);
           //Serial.println(sslClient.getLastSSLError());
           return false;
       }
     }
     
-    Serial.println(F("Connected to MQTT broker"));
-
     mqttClient->setClient(wifiClient);
     if(!mqttClient->connected()){
-        Serial.printf(PSTR("\nConnecting to MQTT broker: ssl://%s:%d, with ClientID: %s Username: %s Password: %s topic: %s \n"), 
-            host.c_str(), port, clientId.c_str(), username.c_str(), password.c_str(), topic.c_str());
-
         if(mqttClient->connect(clientId.c_str(), username.c_str(), password.c_str())){//mqttClient->connect().connect(HOST, PORT)){
             Utils::buzzer(2);
-           
             // subscribe to a topic:
-            //Serial.printf(PSTR("Subscribing to topic: %s"), subtopic);
+            //log(PSTR("Subscribing to topic: %s"), subtopic);
             //mqttClient->subscribe(subtopic);
         }else{
             Utils::buzzer(5);
-            Serial.printf(PSTR("Failed connecting to MQTT broker: ssl://%s:%d\n"), host.c_str(), port);
+            log(PSTR("Failed connecting to MQTT broker: ssl://%s:%d"), host.c_str(), port);
             return false;
         }
     }
 
+    log(PSTR("Successfully connected to MQTT broker: ssl://%s:%d"), host.c_str(), port);
     hasSetup = true;
     return true;
 }
@@ -334,31 +350,23 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
   this->peripherals = peripherals;
   this->prefs = prefs;
 
-  if (!prefs->begin("iot_edge", false)) {
-      Serial.println("Failed to initialize NVS. Restarting...");
-      ESP.restart();
-  }
-  //prefs->putShort("edge_ver", 1);
-
   Serial.println(F("Init WiFi..."));
   WiFi.mode(WIFI_AP_STA);
 
-  wifi_ssid = prefs->getString("wifi_ssid");
-  wifi_pwd = prefs->getString("wifi_pwd");
+  wifi_ssid = prefs->getString("wifi_ssid", "");
+  wifi_pwd = prefs->getString("wifi_pwd", "");
 
-  host = prefs->getString("host");
-  port = prefs->getShort("port");
-  clientId = prefs->getString("clientId");
-  username = prefs->getString("username");
-  password = prefs->getString("password");
-  topic = prefs->getString("topic");
+  host = prefs->getString("host", "");
+  port = prefs->getShort("port", 1883);
+  clientId = prefs->getString("clientId", "cid");
+  username = prefs->getString("username", "");
+  password = prefs->getString("password", "");
+  topic = prefs->getString("topic", "");
   tls = true;//prefs->getBool("tls");
-  ver = prefs->getString("ver");
-  qos = prefs->getUInt("qos"); 
+  ver = prefs->getString("ver", "3.1.1");
+  qos = prefs->getUInt("qos", 0); 
 
   //provide page for config or reconfig
-  scan();
-
   if(wifi_ssid.length() == 0 || wifi_pwd.length() == 0){
     WiFi.disconnect(); //if any previous connections?
     delay(100);
@@ -374,6 +382,21 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
     connectWiFi();
     connectMQTT(true);
   }
+
+  scan();
+
+  //SSE
+  events.onConnect([this](AsyncEventSourceClient *client){
+    if(client->lastId()){
+      Serial.printf("Client connected! Last message ID is: %u\n", client->lastId());
+    }
+    //send event with message "hello!", id current millis
+    // and set reconnect delay to 1 second
+    client->send("Connected", NULL, millis(),1000);
+    this->initlog(); 
+  });
+
+  server.addHandler(&events);
 
   auto aggregator = [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
       if (!index) {
@@ -398,24 +421,101 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
   server.on("/peri", HTTP_POST, [this](AsyncWebServerRequest *request) {
     this->onPeri(request);
   }, NULL, aggregator);
-  // TODO:
-  server.on("/upgrade", HTTP_GET, [this](AsyncWebServerRequest *request) {
-    this->onReqUpgrade();
+  server.on("/reset", HTTP_POST, [this](AsyncWebServerRequest *request) {
+    this->onReset(request);
   });
-  server.on("/upgrade", HTTP_POST, [this](AsyncWebServerRequest *request) {
-    this->onUpgrade();
-  });
+  server.on("/fwfile", HTTP_POST, [this](AsyncWebServerRequest *request) {
+    //this->onUpgrade(request);
+    if (request->getResponse()) {
+        Serial.println("response already created");
+        return;
+      }
 
-  events.onConnect([](AsyncEventSourceClient *client){
-    if(client->lastId()){
-      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
-    }
-    //send event with message "hello!", id current millis
-    // and set reconnect delay to 1 second
-    client->send("hello!",NULL,millis(),1000);
-  });
+      // list all parameters
+      Serial.println("Request parameters:");
+      const size_t params = request->params();
+      for (size_t i = 0; i < params; i++) {
+        const AsyncWebParameter *p = request->getParam(i);
+        Serial.printf("Param[%u]: %s=%s, isPost=%d, isFile=%d, size=%u\n", i, p->name().c_str(), p->value().c_str(), p->isPost(), p->isFile(), p->size());
+      }
 
-  server.addHandler(&events);
+      Serial.println("Flash / Filesystem upload completed");
+
+      request->send(200, "application/json", "{\"err\":\"Upload complete...!\"}");
+      delay(1000);
+      this->onUpgrade(request);
+  },
+  [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+      Serial.printf("Upload[%s]: index=%u, len=%u, final=%d\n", filename.c_str(), index, len, final);
+
+      if (request->getResponse() != nullptr) {
+        Serial.println("upload aborted");
+        return;
+      }
+
+      // start a new content-disposition upload
+      if (!index) {
+        // list all parameters
+        const size_t params = request->params();
+        for (size_t i = 0; i < params; i++) {
+          const AsyncWebParameter *p = request->getParam(i);
+          Serial.printf("Param[%u]: %s=%s, isPost=%d, isFile=%d, size=%u\n", i, p->name().c_str(), p->value().c_str(), p->isPost(), p->isFile(), p->size());
+        }
+
+        // get the content-disposition parameter
+        const AsyncWebParameter *p = request->getParam(asyncsrv::T_name, true, true);
+        if (p == nullptr) {
+          request->send(400, "application/json", "{\"err\":\"Missing content-disposition 'name' parameter...!\"}");
+          return;
+        }
+
+        // determine upload type based on the parameter name
+        /* if (p->value() == "fs") {
+          Serial.printf("Filesystem image upload for file: %s\n", filename.c_str());
+          if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
+            Update.printError(Serial);
+            request->send(400, "text/plain", "Update begin failed");
+            return;
+          }
+
+        } else  */
+        if (p->value() == "fw_file") {
+          Serial.printf("Firmware image upload for file: %s\n", filename.c_str());
+          if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) {
+            Update.printError(Serial);
+            request->send(400, "application/json", "{\"err\":\"Update begin failed...!\"}");
+            return;
+          }
+
+        } else {
+          Serial.printf("Unknown upload type for file: %s\n", filename.c_str());
+          request->send(400, "application/json", "{\"err\":\"Unknown upload type...!\"}");
+          return;
+        }
+      }
+
+      // some bytes to write ?
+      if (len) {
+        if (Update.write(data, len) != len) {
+          Update.printError(Serial);
+          Update.end();
+          request->send(400, "application/json", "{\"err\":\"Update write failed...!\"}");
+          return;
+        }
+      }
+
+      // finish the content-disposition upload
+      if (final) {
+        if (!Update.end(true)) {
+          Update.printError(Serial);
+          request->send(400, "application/json", "{\"err\":\"Update end failed...!\"}");
+          return;
+        }
+
+        // success response is created in the final request handler when all uploads are completed
+        Serial.printf("Upload success of file %s\n", filename.c_str());
+      }
+    });
 
   server.begin();
 }

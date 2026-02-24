@@ -15,8 +15,7 @@
 
 namespace rpz{
 
-const PROGMEM char *PZEM_MSG  = R"({"voltage":%.1f, "current":%.3f, "power":%.1f, "energy":%.3f, "frequency":%.1f, "pf":%.2f})";
-const PROGMEM char *PZEM_tmpl = R"(
+const char *PZEM_tmpl = R"(
 <div  class="card">
     <div class="row pos-r"><h3>%s</h3><input type="checkbox" name="%s" %s  class="pos-a" style="right: 0px;"></div>
     <table>
@@ -29,6 +28,8 @@ const PROGMEM char *PZEM_tmpl = R"(
     </table>  
 </div>  
 )";
+
+const char *PZEM_MSG  = R"({"voltage":%.1f, "current":%.3f, "power":%.1f, "energy":%.3f, "frequency":%.1f, "pf":%.2f})";
 
 // Modbus RTU constants
 const uint8_t MODBUS_READ_HOLDING_REG = 0x03;

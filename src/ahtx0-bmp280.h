@@ -15,7 +15,7 @@
 namespace rpz{
 
 
-const PROGMEM char *SEN_MSG  = R"({"temperature":%f, "humidity":%f, "pressure":%f, "altitude":%f})";    
+const char *SEN_MSG  = R"({"temperature":%f, "humidity":%f, "pressure":%f, "altitude":%f})";    
 
 Adafruit_AHTX0 aht;
 Adafruit_BMP280 bmp;    
