@@ -6,6 +6,7 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <PubSubClient.h>
+#include <HTTPClient.h>
 
 #include "peripheral.h"
 #include "utils.h"
@@ -21,29 +22,10 @@ class ConProvider: public Utils{
 
         void init(PubSubClient *mqttClient, Peripheral **peripherals, Preferences *prefs);
         bool connectMQTT(bool setup=false);
-        bool connectWiFi(bool setup=false);
-        void scan();
+
+        bool haswifi = false;
+        bool hasSetup = false;
         
-
-        void homePage(AsyncWebServerRequest *request, int status=200, const char *err=nullptr);
-        void err(const char *err);
-        char * getDash();
-        char * getWifi();
-        char * getMqtt();
-        char * getPeri();
-        void onWifi(AsyncWebServerRequest *request);
-        void onMqtt(AsyncWebServerRequest *request);
-        void onPeri(AsyncWebServerRequest *request);
-        void onReset(AsyncWebServerRequest *request);
-        void onUpgrade(AsyncWebServerRequest *request);
-        void toJson(AsyncWebServerRequest *request, JsonDocument &doc);
-
-        void initlog(){
-             Utils::ev = &events;
-        }
-
-        void save();
-
         //mqtt
         String host; 
 		int port; 
@@ -55,17 +37,39 @@ class ConProvider: public Utils{
         String ver;
         uint8_t qos;
 
-        bool haswifi = false;
-        bool hasSetup = false;
-
-        AsyncEventSource events;
-
     private:
+        bool connectWiFi(bool setup=false);
+        void scan();
+
+        void homePage(AsyncWebServerRequest *request, int status=200, const char *err=nullptr);
+        void err(const char *err);
+        char * getDash();
+        char * getWifi();
+        char * getMqtt();
+        char * getPeri();
+        void onWifi(AsyncWebServerRequest *request);
+        void onMqtt(AsyncWebServerRequest *request);
+        void onPeri(AsyncWebServerRequest *request);
+        
+        void onUpgrade(AsyncWebServerRequest *request);
+        void toJson(AsyncWebServerRequest *request, JsonDocument &doc);
+
+        void onReset(AsyncWebServerRequest *request);
+        void restart(AsyncWebServerRequest *request);
+
+        void initlog(){
+             Utils::ev = &events;
+        }
+
+        void save();
+
+        bool fwupdated = false;
         String ssids[20];
         uint8_t ssid_cnt;
         String wifi_ssid;
         String wifi_pwd;
 
+        AsyncEventSource events;
         AsyncWebServer server;
         WiFiClient wifiClient; 
         PubSubClient *mqttClient;

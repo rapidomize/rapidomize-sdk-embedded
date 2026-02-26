@@ -74,7 +74,7 @@ char * ConProvider::getMqtt(){
 char *ConProvider::getPeri(){
   String peri;
   
-  for(int i=0; i < MAX_PERIPHERALS; i++){
+  for(int i=0; i < MAX_PERIPHERALS && peripherals[i] != nullptr; i++){
     char *fr = peripherals[i]->confpg();
     peri += fr;
     free(fr);
@@ -148,7 +148,7 @@ void ConProvider::onPeri(AsyncWebServerRequest *request){
   JsonDocument doc;
   toJson(request, doc);
 
-  for(int i=0; i < MAX_PERIPHERALS; i++){
+  for(int i=0; i < MAX_PERIPHERALS && peripherals[i] != nullptr; i++){
     peripherals[i]->init(&doc);
   }
 
@@ -156,20 +156,24 @@ void ConProvider::onPeri(AsyncWebServerRequest *request){
   request->send(200, "application/json", "{}");
 }
 
+void ConProvider::restart(AsyncWebServerRequest *request){
+    log("Restarting IoT Edge...");
+
+    //commit the prefs & restart
+    prefs->end();
+    delay(500);
+    ESP.restart();
+}
+
 void ConProvider::onReset(AsyncWebServerRequest *request){
+  request->send(200, "application/json", "{\"err\":\"Resetting IoT Edge...!\"}");
   log("Resetting IoT Edge...");
   prefs->clear();
-  delay(100);
-  request->send(200, "application/json", "{\"err\":\"Resetting IoT Edge...!\"}");
-  ESP.restart();
+  restart(request);
 }
 
 void ConProvider::onUpgrade(AsyncWebServerRequest *request){
-  
-  //commit the prefs & restart
-  prefs->end();
-  delay(100);
-  ESP.restart();
+  restart(request);
 }
 
 //commit & restart
@@ -339,7 +343,7 @@ void ConProvider::toJson(AsyncWebServerRequest *request, JsonDocument &doc){
       return;
     }
 
-    Serial.printf(PSTR("jdata: %s\n"), (*data).c_str());
+    //Serial.printf(PSTR("jdata: %s\n"), (*data).c_str());
     delete data;
     request->_tempObject = nullptr;
 }
@@ -383,20 +387,19 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
     connectMQTT(true);
   }
 
-  scan();
-
   //SSE
   events.onConnect([this](AsyncEventSourceClient *client){
     if(client->lastId()){
       Serial.printf("Client connected! Last message ID is: %u\n", client->lastId());
     }
-    //send event with message "hello!", id current millis
+    //send event with message "Connected!", id current millis
     // and set reconnect delay to 1 second
     client->send("Connected", NULL, millis(),1000);
+    //TODO: send the last 100 logs items
     this->initlog(); 
   });
 
-  server.addHandler(&events);
+  //server.addHandler(&events);
 
   auto aggregator = [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
       if (!index) {
@@ -424,6 +427,43 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
   server.on("/reset", HTTP_POST, [this](AsyncWebServerRequest *request) {
     this->onReset(request);
   });
+  server.on("/fwurl", HTTP_POST, [this](AsyncWebServerRequest *request) {
+    HTTPClient http;
+    
+    JsonDocument doc;
+    toJson(request, doc);
+
+    http.begin(this->wifiClient, (const char *)doc["fw_url"]);
+    int httpCode = http.GET();
+
+    if (httpCode == HTTP_CODE_OK) {
+        // Get the stream pointer to the firmware data
+        WiFiClient* stream = http.getStreamPtr();
+
+        // Start the update process
+        if (Update.begin(http.getSize(), U_FLASH)) {
+            Serial.println("Update started...");
+            // Write the stream to the flash memory
+            Update.writeStream(*stream);
+            if (Update.end()) {
+                Serial.println("Update successful! Rebooting...");
+                if (Update.canRollBack()) { // Optional: check if rollback is possible
+                    Serial.println("Can roll back to previous version.");
+                }
+                ESP.restart(); // Mandatory restart
+            } else {
+                Serial.println("Update failed!");
+                Update.printError(Serial);
+            }
+        } else {
+            Serial.println("Not enough space to start update!");
+            Update.printError(Serial);
+        }
+    } else {
+        Serial.printf("HTTP Update failed. Error: %d\n", httpCode);
+    }
+    http.end();
+  });
   server.on("/fwfile", HTTP_POST, [this](AsyncWebServerRequest *request) {
     //this->onUpgrade(request);
     if (request->getResponse()) {
@@ -432,20 +472,24 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
       }
 
       // list all parameters
-      Serial.println("Request parameters:");
+      /* Serial.println("Request parameters:");
       const size_t params = request->params();
       for (size_t i = 0; i < params; i++) {
         const AsyncWebParameter *p = request->getParam(i);
         Serial.printf("Param[%u]: %s=%s, isPost=%d, isFile=%d, size=%u\n", i, p->name().c_str(), p->value().c_str(), p->isPost(), p->isFile(), p->size());
+      } */
+      
+      if(fwupdated) {
+        fwupdated = false;
+        log("Firmware upload completed");
+        request->send(200, "application/json", "{\"err\":\"Firmware image uploaded successfully! Device will be rebooted shortly to start new firmware!\"}");
+        delay(500);
+        this->onUpgrade(request);
+        return;
       }
-
-      Serial.println("Flash / Filesystem upload completed");
-
-      request->send(200, "application/json", "{\"err\":\"Upload complete...!\"}");
-      delay(1000);
-      this->onUpgrade(request);
+      request->send(400, "application/json", "{\"err\":\"Firmware image upload failed...!\"}");
   },
-  [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+  [this](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
       Serial.printf("Upload[%s]: index=%u, len=%u, final=%d\n", filename.c_str(), index, len, final);
 
       if (request->getResponse() != nullptr) {
@@ -470,26 +514,16 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
         }
 
         // determine upload type based on the parameter name
-        /* if (p->value() == "fs") {
-          Serial.printf("Filesystem image upload for file: %s\n", filename.c_str());
-          if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
-            Update.printError(Serial);
-            request->send(400, "text/plain", "Update begin failed");
-            return;
-          }
-
-        } else  */
         if (p->value() == "fw_file") {
           Serial.printf("Firmware image upload for file: %s\n", filename.c_str());
           if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) {
             Update.printError(Serial);
-            request->send(400, "application/json", "{\"err\":\"Update begin failed...!\"}");
+            request->send(400, "application/json", "{\"err\":\"Firmware update begin failed...!\"}");
             return;
           }
-
         } else {
           Serial.printf("Unknown upload type for file: %s\n", filename.c_str());
-          request->send(400, "application/json", "{\"err\":\"Unknown upload type...!\"}");
+          request->send(400, "application/json", "{\"err\":\"Unknown Firmware upload type...!\"}");
           return;
         }
       }
@@ -499,7 +533,7 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
         if (Update.write(data, len) != len) {
           Update.printError(Serial);
           Update.end();
-          request->send(400, "application/json", "{\"err\":\"Update write failed...!\"}");
+          request->send(400, "application/json", "{\"err\":\"Firmware update write failed...!\"}");
           return;
         }
       }
@@ -508,16 +542,17 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
       if (final) {
         if (!Update.end(true)) {
           Update.printError(Serial);
-          request->send(400, "application/json", "{\"err\":\"Update end failed...!\"}");
+          request->send(400, "application/json", "{\"err\":\"Firmware update end failed...!\"}");
           return;
         }
-
+        fwupdated = true;
         // success response is created in the final request handler when all uploads are completed
-        Serial.printf("Upload success of file %s\n", filename.c_str());
+        Serial.printf("Firmware written successfully - file %s\n", filename.c_str());
       }
     });
 
   server.begin();
+  scan();
 }
 
 }

@@ -10,7 +10,7 @@
 
 namespace rpz{
 
-#define RPZ_VERSION "0.7.5-b20"
+#define RPZ_VERSION "0.7.5-b24"
 
 enum rpz_ops_t{
 
@@ -71,7 +71,7 @@ enum ALM{
     ALM_OTHER
 };
 
-const int MAX_PERIPHERALS = 4;
+const int MAX_PERIPHERALS = 10;
 
 class Device{
     public:    

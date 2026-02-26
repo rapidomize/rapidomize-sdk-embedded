@@ -11,7 +11,7 @@ namespace rpz{
 
 const char *DS18B20_tmpl = R"(
 <div  class="card">
-    <div class="row pos-r"><h3>%s</h3><input type="checkbox" name="%s_act" %s  class="pos-a" style="right: 0px;"></div>
+    <div class="row pos-r"><h3>%s</h3><input type="checkbox" name="%s" %s  class="pos-a" style="right: 0px;"></div>
     <table>
         <tr><td>DS18B20 1</td><td class="fx">GPIO33</td></tr>
         <tr><td>DS18B20 2</td><td class="fx">GPI014</td></tr>
@@ -24,12 +24,13 @@ const char *DS18B20_MSG  = R"({"temperature01":%f, "temperature02":%f})";
 class DS18B20: public Peripheral{
   public: 
     DS18B20(Preferences *prefs, int seq=1):Peripheral(prefs,seq), ds1(33), ds2(14){
-      name = "DS18B20_";
-      name+=seq;
+        sprintf(name, "DS18B20_%d", seq);
+
+        String pname = name; pname+="_I2CADDR";
     }
     char * confpg(){
         char *fr = (char *) malloc(4096);
-        sprintf(fr, DS18B20_tmpl, name.c_str(),name.c_str(), enabled?"checked":"");
+        sprintf(fr, DS18B20_tmpl, name, name, enabled?"checked":"");
         return fr;
     }
     

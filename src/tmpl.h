@@ -145,6 +145,7 @@ const char *main_tmpl = R"(
         </div>
         <!-- messages (if any) -->
         <div  id="msg">%s</div>
+        <progress id="progBar" value="0" max="100" style="display: none; background-color: #37a000;"></progress>
         <div class="tabs">
             %s
             %s
@@ -157,10 +158,10 @@ const char *main_tmpl = R"(
                 <p>Upgrade firmware using a local file or remote url.</p>
                 <form action="/fwurl" method="post" class="card column brd">
                     <h4>Use A Remote URL (OTA)</h4>
-                    <input type="text" name="fw_url" value="https://" class="fx-g">
+                    <input type="text" name="fw_url" value="https://github.com/rapidomize/rapidomize-sdk-embedded/releases/" class="fx-g">
                     <input type="submit"  value="Update" class="brdr" style="margin: 20px auto; width: 200px;">
                 </form>
-                <form action="/fwfile" method="post" class="card column brd mt-30">
+                <form action="/fwfile" method="post" enctype="multipart/form-data" class="card column brd mt-30">
                     <h4>Use A Local File</h4>
                     <input type="file" name="fw_file">
                     <input type="submit"  value="Update" class="brdr" style="margin: 20px auto; width: 200px;">
@@ -170,7 +171,7 @@ const char *main_tmpl = R"(
             <label for="tab6" class="tabs__label">Logs</label>
             <div class="tabs__content">
                 <h2>Logs</h2>
-                <div id="evts" class="card column" style="padding-left: 20px;height: 200px;overflow-y: auto;"></div>
+                <div id="evts" class="card column" style="padding-left: 20px;height: 60vh;overflow-y: auto;"></div>
             </div>
             <input type="radio" class="tabs__radio" name="atabs" id="tab7">
             <label for="tab7" class="tabs__label">Reset</label>
@@ -183,55 +184,69 @@ const char *main_tmpl = R"(
             </div>
         </div>
         <script>
-            
             const forms = document.getElementsByTagName('form');
             const msg = document.getElementById('msg');
+            const progressBar = document.getElementById("progBar");
             for(let i=0; i < forms.length; i++){
-                if(forms[i].action.startsWith("/fw")) continue;
                 forms[i].addEventListener('submit', function (event) {
                     event.preventDefault();
                     event.stopPropagation();
-                    const form = event.target;
-                    // Convert form data to a JavaScript object using the FormData API
-                    const frm = new FormData(form);
-                    const frmData = Object.fromEntries(frm.entries());
-                    console.log('data', frmData);
 
-                    // Convert the JavaScript object to a JSON string
-                    const jdata = JSON.stringify(frmData);
+                    msg.textContent = '';
 
-                    fetch(form.action, {
-                        method: 'POST', 
-                        headers: {
-                        'Content-Type': 'application/json' 
-                        },
-                        body: jdata,
-                        signal: AbortSignal.timeout(3000) 
-                    }).then(response => {
-                        if (!response.ok) {
-                            const contentType = response.headers.get("content-type");
-                            if (!contentType || !contentType.includes("application/json")) {
-                                throw new Error(`Unexpected error! status: ${response.status}`);
-                            }
-                        }
-                        return response.json()
-                    }).then(data => {
-                        console.log('Success:', data);
-                        if(data['err']){
-                            msg.textContent = data['err'];
+                    const xhr = new XMLHttpRequest();
+
+                    xhr.addEventListener("load", function(evt) {
+                        const contentType = xhr.getResponseHeader("Content-Type");
+                        if (!contentType || !contentType.includes("application/json")) {
+                            msg.textContent = `Unexpected error! status: ${xhr.status} - ${xhr.statusText}`;
                             msg.setAttribute('style', 'color: red;');
-                        }else {
-                            msg.textContent = 'Success';
+                            xhr.abort();
+                        }
+                        const data = xhr.response;
+                        //const data = JSON.parse(xhr.response);
+                        if (xhr.status != 200) {
+                            console.log('Failed:', data);
+                            msg.textContent = data['err']?data['err']:'Error';
+                            msg.setAttribute('style', 'color: red;');
+                        }else{
+                            console.log('Success:', data);
+                            msg.textContent = data['err']?data['err']:'Success';
                             msg.setAttribute('style', 'color: green;');
                         }
-                        //window.location.href = '/';
-                    }).catch((error) => {
+                        progressBar.style.display = 'none';
+                    }, false);
+
+                    xhr.addEventListener("error", function(evt) {
                         console.error('Error:', error);
                         msg.textContent = error;
                         msg.setAttribute('style', 'color: red;');
-                    });
+                        progressBar.style.display = 'none';
+                    }, false);
+
+                    xhr.open("POST", forms[i].action);
+                    xhr.responseType = 'json';
+                    
+                    let body = new FormData(event.target);
+                    if(forms[i].action.indexOf("/fwfile") < 0){
+                        // Convert the JavaScript object to a JSON string
+                        const frmData = Object.fromEntries(body.entries());
+                        body = JSON.stringify(frmData)
+                        console.log('data', frmData);
+                        xhr.setRequestHeader('Content-Type', 'application/json');
+                    }else{
+                        progressBar.style.display = 'block';
+                        xhr.upload.addEventListener("progress", function(evt) {
+                            if (evt.lengthComputable) {
+                                progressBar.value = (evt.loaded / evt.total) * 100; 
+                            }
+                        }, false);
+                    }
+
+                    xhr.send(body);
                 });
             }
+
             const evtSource = new EventSource("/evts");
             evtSource.onmessage = (event) => {
                 const eventList = document.getElementById("evts");

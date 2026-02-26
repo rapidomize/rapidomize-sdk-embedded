@@ -39,24 +39,31 @@ const uint8_t MODBUS_ERROR_FLAG = 0x80;
 class PZEM01x: public Peripheral{
         
     public: 
-    const char * dconf = "{\"SLAVE_ADDR\":1, \"DE_PIN\":4,\"RX_PIN\":35, \"TX_PIN\":32, \"BAUD_RATE\":9600}";
 
     PZEM01x(Preferences *prefs, int seq=1):Peripheral(prefs, seq){
-        name = "PZEM01x_";
-        name+=seq;
-        configure(dconf);
+        sprintf(name, "PZEM01x_%d", seq);
 
-        slaveAddr = conf["SLAVE_ADDR"];  // Default slave address
-        baudRate = conf["BAUD_RATE"];    // Default baud rate
-        //conf["DE_PIN"] = dePin = 4;    // DE/RE pin for MAX485
-        rxPin = conf["RX_PIN"];          // A - RX pin (GPIO35) 
-        txPin = conf["TX_PIN"];          // B - TX pin (GPIO32)
+        //String pname = name; pname+="_GPIO";
+
+        //defaults
+        conf["SLAVE_ADDR"] = 0x01;  // Default slave address
+        conf["BAUD_RATE"] = 9600;   // Default baud rate
+        conf["DE_PIN"] = 4;         // DE/RE pin for MAX485
+        conf["RX_PIN"] = 35;        // A - RX pin (GPIO35) 
+        conf["TX_PIN"] = 32;        // B - TX pin (GPIO32)
+
+        configure();
+
+        rs485addr = conf["SLAVE_ADDR"];  
+        baudRate = conf["BAUD_RATE"];    
+        dePin = conf["DE_PIN"];    
+        rxPin = conf["RX_PIN"];          
+        txPin = conf["TX_PIN"];          
     }
 
     char * confpg(){
         char *fr = (char *) malloc(4096*2);
-        const char * pname = name.c_str();
-        sprintf(fr, PZEM_tmpl, pname, pname, enabled?"checked":"");//, pname, (int)conf["SLAVE_ADDR"]
+        sprintf(fr, PZEM_tmpl, name, name, enabled?"checked":"");//, pname, (int)conf["SLAVE_ADDR"]
         return fr;
     }
 
@@ -66,8 +73,8 @@ class PZEM01x: public Peripheral{
 
         // Parse configuration if provided
         // Format: "slave_addr,de_pin,rx_pin,tx_pin,baud_rate" or use defaults
-         Serial.printf(PSTR("%s initialized. Slave: 0x%02X, RX: %d, TX: %d, Baud: %lu\n"), name.c_str(),
-                     slaveAddr, rxPin, txPin, baudRate);//DE: %d, dePin
+         Serial.printf(PSTR("%s initialized. Slave: 0x%02X, RX: %d, TX: %d, Baud: %lu\n"), name,
+                     rs485addr, rxPin, txPin, baudRate);//DE: %d, dePin
         
         // Configure DE/RE pin
         /* pinMode(dePin, OUTPUT);
@@ -80,9 +87,9 @@ class PZEM01x: public Peripheral{
         // Test communication by reading voltage
         delay(1000); // Allow time for initialization
         if (testCommunication()) {
-            Serial.println("PZEM-01x communication OK.");
+            Serial.printf(PSTR("%s communication OK.\n"), name);
         } else {
-            Serial.println("PZEM-01x communication failed. Check wiring and power.");
+            Serial.printf(PSTR("%s communication failed. Check wiring and power.\n"), name);
         }
     }
 
@@ -112,7 +119,6 @@ class PZEM01x: public Peripheral{
     }
 
     private:
-    uint8_t slaveAddr;
     int dePin;
     int rxPin;
     int txPin;
@@ -141,7 +147,7 @@ class PZEM01x: public Peripheral{
         uint8_t request[8];
         
         // Build request
-        request[0] = slaveAddr;
+        request[0] = rs485addr;
         request[1] = function;
         request[2] = (startAddr >> 8) & 0xFF;
         request[3] = startAddr & 0xFF;
@@ -202,9 +208,9 @@ class PZEM01x: public Peripheral{
         }
         
         // Check slave address
-        if (response[0] != slaveAddr) {
+        if (response[0] != rs485addr) {
              Serial.printf(PSTR("Wrong slave address in response. Expected: 0x%02X, Got: 0x%02X\n"), 
-                            slaveAddr, response[0]);
+                            rs485addr, response[0]);
             return false;
         }
         

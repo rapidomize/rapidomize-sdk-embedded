@@ -21,7 +21,7 @@ const char *Sht3x_tmpl = R"(
         <tr><td>Interface</td><td>I2C</td></tr>
         <tr><td>SDA GPIO</td><td><input type="number" name="SDA" value="4" disabled></td></tr>
         <tr><td>SCL GPIO</td><td><input type="number" name="SCL" value="16" disabled></td></tr>
-        <tr><td>I2C Address (hex)</td><td><input type="text" name="I2C_ADDRESS" value="44" disabled></td></tr>
+        <tr><td>I2C Address (hex)</td><td><input type="text" name="I2C_ADDRESS" value="%X" disabled></td></tr>
     </table>  
 </div>  
 )";   
@@ -30,18 +30,21 @@ Adafruit_SHT31 sht3x = Adafruit_SHT31();
 
 class Sht3x: public Peripheral{
 
-    const char * dconf = "{\"I2C_ADDRESS\":44}";
-    
     public: 
     Sht3x(Preferences *prefs, int seq=1):Peripheral(prefs,seq){
-        name = "Sht3x_";
-        name+=seq;
-        configure(dconf);
-        conf["I2C_ADDRESS"] = 0x44;
+        sprintf(name, "Sht3x_%d", seq);
+
+        String pname = name; pname+="_I2CADDR";
+
+        //default
+        conf[pname] = 0x44; // Set to 0x45 for alternate i2c addr
+        configure();
+
+        i2caddr = (uint8_t)conf[pname];
     }
     char * confpg(){
         char *fr = (char *) malloc(4096);
-        sprintf(fr, Sht3x_tmpl, name.c_str(), name.c_str(), enabled?"checked":"");
+        sprintf(fr, Sht3x_tmpl, name, name, enabled?"checked":"", i2caddr);
         return fr;
     }
 
@@ -51,10 +54,10 @@ class Sht3x: public Peripheral{
         
         Wire.begin(4, 16); //SDA=GPIO4  SCL=GPIO16 
 
-        if (!sht3x.begin((int)conf["I2C_ADDRESS"])) {   // Set to 0x45 for alternate i2c addr
-            Serial.printf(PSTR("SHT3x - cannot initiate a connection for %s with address %X\n"), name.c_str(), (int)conf["I2C_ADDRESS"]);
+        if (!sht3x.begin(i2caddr)) {   
+            Serial.printf(PSTR("%s cannot initiate a connection address %X\n"), name, i2caddr);
         }else
-            Serial.println("SHT3x sensor initialized.");
+            Serial.printf(PSTR("%s initialized.\n"), name);
     }
 
     char * read(){

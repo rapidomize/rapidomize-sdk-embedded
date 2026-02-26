@@ -11,6 +11,8 @@
 #include "sht3x.h"
 #include "relay.h"
 #include "switch.h"
+#include "ahtx0.h"
+#include "bmp280.h"
 
 #include <ArduinoJson.h>
 
@@ -39,9 +41,13 @@ void Device::init(){
     peripherals[senscnt++] = new Sht3x(&prefs);
     peripherals[senscnt++] = new Switch(&prefs);
     peripherals[senscnt++] = new Switch(&prefs,2);
+    peripherals[senscnt++] = new AHTx0(&prefs);
+    peripherals[senscnt++] = new BMP280(&prefs); 
+    
+    //TODO:
     /* peripherals[senscnt++] = new Relay(&prefs);
     peripherals[senscnt++] = new Relay(&prefs,2); */
-    for(int i=0; i < MAX_PERIPHERALS; i++){
+    for(int i=0; i < MAX_PERIPHERALS && peripherals[i] != nullptr; i++){
         peripherals[i]->init(nullptr);
     }
 
@@ -125,7 +131,6 @@ void Device::recv(const char* topic, byte* payload, unsigned int length) {
 void Device::send(const char* msg, const char* topic) {
     
     if (mqttClient.connected()) {
-        //Serial.printf(PSTR("\nmsg: %s\n"), msg);
         conprv.log(msg);
         mqttClient.publish(topic, msg);
     }else
@@ -181,7 +186,7 @@ void Device::update(){
                             jreq[size++]=','; jreq[size] = '\0';
                         }
                         int ssz = strlen(data);
-                        Serial.printf(PSTR("\ndata: %s, len: %d\n"), data, ssz);
+                        //Serial.printf(PSTR("\ndata: %s, len: %d\n"), data, ssz);
                         
                         strlcat(jreq, data, MAX_DATA);
                         size += ssz;

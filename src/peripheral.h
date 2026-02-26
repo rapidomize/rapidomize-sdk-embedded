@@ -23,19 +23,38 @@ class Peripheral{
             this->prefs = prefs;
         }
 
-        virtual bool configure(const char *dconf){
-            String sconf = prefs->getString(name.c_str(), dconf);
+        virtual bool configure(){
+            String sconf = prefs->getString(name);
+            if(sconf.length() != 0){
+                auto err = deserializeJson(conf, sconf.c_str());
+                if(err){
+                    Serial.printf(PSTR("Error parsing configuration for %s : %s\n"), name, sconf.c_str());
+                    return false;
+                }
+            }
+            conf[name] = enabled = (bool)conf[name] | false;
+            hasenabled = enabled;
+
+            //TODO: debug
+            serializeJson(conf, sconf);
+            Serial.printf("%s [%d] ==> %s\n", name, enabled?1:0, sconf.c_str());
+            
+            return true;
+
+        }
+        /* virtual bool configure(const char *dconf){
+            String sconf = prefs->getString(name, dconf);
             auto err = deserializeJson(conf, sconf.c_str());
             if(err){
-                Serial.printf(PSTR("Error parsing configuration for %s : %s\n"), name.c_str(), sconf.c_str());
+                Serial.printf(PSTR("Error parsing configuration for %s : %s\n"), name, sconf.c_str());
                 return false;
             }
-            conf[name.c_str()] = enabled = (bool)conf[name.c_str()] | false;
+            conf[name] = enabled = (bool)conf[name] | false;
             serializeJson(conf, sconf);
-            Serial.printf(PSTR("%s\n"), sconf.c_str());
+            Serial.printf(PSTR("enabled %d ==> %s\n"),enabled, sconf.c_str());
             hasenabled = enabled;
             return true;
-        }
+        } */
         virtual char * confpg() = 0;
         virtual void init(JsonDocument *jconf) {
             if(!jconf) return;
@@ -43,11 +62,11 @@ class Peripheral{
             //for now only enable/disable
             const JsonDocument _jconf = *jconf;
             hasenabled = enabled;
-            enabled = conf[name.c_str()] = _jconf[name.c_str()] == "on";
+            enabled = conf[name] = _jconf[name] == "on";
             String sconf;
             serializeJson(conf, sconf);
             Serial.printf(PSTR("\ninit1: %s\n"), sconf.c_str());
-            prefs->putString(name.c_str(), sconf.c_str());
+            prefs->putString(name, sconf.c_str());
         }
         virtual char * read(){
 			return nullptr;
@@ -83,7 +102,10 @@ class Peripheral{
         bool hasenabled = false;
         char data[512];
         int seq;
-        String name;
+        char name[60];
+
+        uint8_t i2caddr;
+        uint8_t rs485addr; //slave address
 };
 
 }
