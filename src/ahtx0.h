@@ -3,6 +3,8 @@
 
 #include "peripheral.h" 
 
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
 #include <Adafruit_AHTX0.h> 
 
 /* 
@@ -49,7 +51,7 @@ class AHTx0: public Peripheral{
             Peripheral::init(jconf);
             if(!enabled) return;
 
-            //Wire.begin(4, 16); //SDA=GPIO4  SCL=GPIO16 
+            Wire.begin(4, 16); //SDA=GPIO4  SCL=GPIO16 
             // Initialize sensor
             if (!aht.begin()) {
                 Serial.printf(PSTR("%s cannot initiate a connection address %X\n"), name, i2caddr);

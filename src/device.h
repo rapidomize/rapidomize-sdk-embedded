@@ -10,7 +10,9 @@
 
 namespace rpz{
 
-#define RPZ_VERSION "0.7.5-b24"
+#ifndef RPZ_VERSION
+#define RPZ_VERSION "0.7.5-b25"
+#endif
 
 enum rpz_ops_t{
 

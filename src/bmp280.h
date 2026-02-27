@@ -50,7 +50,7 @@ class BMP280: public Peripheral{
             Peripheral::init(jconf);
             if(!enabled) return;
 
-            //Wire.begin(4, 16); //SDA=GPIO4  SCL=GPIO16 
+            Wire.begin(4, 16); //SDA=GPIO4  SCL=GPIO16 
 
             // Initialize BMP280 sensor
             if (!bmp.begin()) {

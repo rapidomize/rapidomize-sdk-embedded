@@ -4,7 +4,8 @@
 #include "peripheral.h" 
 
 #include <Wire.h>
-#include "Adafruit_SHT31.h"
+#include <Adafruit_Sensor.h>
+#include <Adafruit_SHT31.h>
 /* 
     SHT3x Temperature Humidity
  */
@@ -26,9 +27,9 @@ const char *Sht3x_tmpl = R"(
 </div>  
 )";   
 
-Adafruit_SHT31 sht3x = Adafruit_SHT31();
-
 class Sht3x: public Peripheral{
+
+    Adafruit_SHT31 sht3x = Adafruit_SHT31();
 
     public: 
     Sht3x(Preferences *prefs, int seq=1):Peripheral(prefs,seq){

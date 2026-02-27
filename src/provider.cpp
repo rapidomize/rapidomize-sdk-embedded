@@ -18,6 +18,7 @@ namespace rpz{
 
 
 /* 
+  Connect to the WiFi SSID - 'iot_edge'
   Go to http://192.168.4.1 in a web browser to configure the gateway
 */      
 void ConProvider::homePage(AsyncWebServerRequest *request, int status, const char *err) {
@@ -233,7 +234,7 @@ void ConProvider::scan() {
   }
 
   // Wait a bit before scanning again
-  //delay(5000);
+  //delay(500);
 }
 
 bool ConProvider::connectWiFi(bool setup){
@@ -399,8 +400,7 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
     this->initlog(); 
   });
 
-  //server.addHandler(&events);
-
+  //aggregate all chunks
   auto aggregator = [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
       if (!index) {
         request->_tempObject = new String();
@@ -465,23 +465,14 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
     http.end();
   });
   server.on("/fwfile", HTTP_POST, [this](AsyncWebServerRequest *request) {
-    //this->onUpgrade(request);
-    if (request->getResponse()) {
+      if (request->getResponse()) {
         Serial.println("response already created");
         return;
       }
-
-      // list all parameters
-      /* Serial.println("Request parameters:");
-      const size_t params = request->params();
-      for (size_t i = 0; i < params; i++) {
-        const AsyncWebParameter *p = request->getParam(i);
-        Serial.printf("Param[%u]: %s=%s, isPost=%d, isFile=%d, size=%u\n", i, p->name().c_str(), p->value().c_str(), p->isPost(), p->isFile(), p->size());
-      } */
       
       if(fwupdated) {
         fwupdated = false;
-        log("Firmware upload completed");
+        log("Firmware image uploaded successfully! Device will be rebooted shortly to start new firmware");
         request->send(200, "application/json", "{\"err\":\"Firmware image uploaded successfully! Device will be rebooted shortly to start new firmware!\"}");
         delay(500);
         this->onUpgrade(request);
@@ -493,7 +484,7 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
       Serial.printf("Upload[%s]: index=%u, len=%u, final=%d\n", filename.c_str(), index, len, final);
 
       if (request->getResponse() != nullptr) {
-        Serial.println("upload aborted");
+        Serial.println("Firmware upload aborted");
         return;
       }
 
@@ -509,7 +500,7 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
         // get the content-disposition parameter
         const AsyncWebParameter *p = request->getParam(asyncsrv::T_name, true, true);
         if (p == nullptr) {
-          request->send(400, "application/json", "{\"err\":\"Missing content-disposition 'name' parameter...!\"}");
+          request->send(400, "application/json", "{\"err\":\"Missing firmware binary?\"}");
           return;
         }
 
@@ -542,14 +533,14 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
       if (final) {
         if (!Update.end(true)) {
           Update.printError(Serial);
-          request->send(400, "application/json", "{\"err\":\"Firmware update end failed...!\"}");
+          request->send(400, "application/json", "{\"err\":\"Firmware update ending failed...!\"}");
           return;
         }
         fwupdated = true;
         // success response is created in the final request handler when all uploads are completed
         Serial.printf("Firmware written successfully - file %s\n", filename.c_str());
       }
-    });
+  });
 
   server.begin();
   scan();
