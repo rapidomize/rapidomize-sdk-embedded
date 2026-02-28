@@ -36,7 +36,10 @@ Firmware can be first time installed (Flashed) using following tools. Once the f
 
 ### First Time installations
 Before you start, download the latest release of the [rapidomize-sdk-embedded firmware](https://github.com/rapidomize/rapidomize-sdk-embedded/releases).
-Connect your device using a USB cable to your computer. In case of, [IoT Edge Controller: rpz-d2x2t2ux-we](https://rapidomize.com/docs/solutions/iot/device/rpz-d2x2t2ux-we/), it also need to be powered up using the 12V power adopter. 
+- Connect your device using a USB-C cable to your computer. 
+- In case of, [IoT Edge Controller: rpz-d2x2t2ux-we](https://rapidomize.com/docs/solutions/iot/device/rpz-d2x2t2ux-we/), it needs to be powered up using the 12V power adopter. 
+- You may need USB serial adapter drivers if it's not already installed in your computer: Install CH341SER USB driver. 
+- Download one of the Flash Tool mentioned below.
 
 If you are customizing the firmware, download the source release tarball and follow the developer documentation to customize the firmware as you need. 
 
@@ -61,32 +64,65 @@ If you are customizing the firmware, download the source release tarball and fol
 
 
 
-## Flashing with Esptool
-[esptool](https://github.com/espressif/esptool) : a Python-based open-source, platform-independent commandline utility for flashing. Steps to install the firmware:
+### Flashing with Esptool
+[esptool](https://github.com/espressif/esptool) : The official flashing tool from Espressif. It is a Python-based open-source, platform-independent commandline utility for flashing. 
+
+Steps to install the firmware:
 - Download & extract the latest binary release for your operating system & CPU architecture from [esptool release page](https://github.com/espressif/esptool/releases). 
 - OR if you have Python3 in your system, install it via `pip`.
 ```
 pip install esptool
 ```
 
-- Erase Flash
-```
-esptool --chip esp32 --port PORT erase_flash
-```
 - Upload/Write Flash
 ```
-esptool -p PORT -b 460800 --chip esp32 write_flash -z --flash_mode dio --flash_freq 40m --flash_size detect 0x10000 rapidomize-sdk-embedded-0.7.5.b24.bin
+esptool -p PORT -b 460800 --chip esp32 write-flash -z --flash-mode dio --flash-freq 40m --flash-size detect 0x10000 FIRMWARE_BINARY
 ```
+where: 
+- `PORT` - is the USB serial port identified above.
+- `FIRMWARE_BINARY` - is the binary file yu have downloaded from the release page e.g. `rapidomize-sdk-embedded-0.7.5-b26.bin`
 
-where PORT is the USB serial port identified above.
+After successfully executing the command, esptool will hard reset the device, causing it to reboot and run the new firmware.
 
-After successfully executing the command, esptool will hard reset the chip, causing it to run the firmware
-
-## Flash Download Tool
+### Flashing with Flash Download Tool
 If you have a computer with Windows you can use `Flash Download Tool` to flash the firmware.
 - Download & extract the latest binary release [Flash Download Tool](https://dl.espressif.com/public/flash_download_tool.zip)
 
 [Flash Download Tool User Guide](https://docs.espressif.com/projects/esp-test-tools/en/latest/esp32/production_stage/tools/flash_download_tool.html)
+
+
+## Monitoring
+Once the flashing is done, device can be monitored using a serial monitor. Device events can also be monitored using the webUI `Logs` tab. Use one of the following tools to monitor you device via serial port.
+
+- [Putty](https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html) - serial monitor for Windows, Linux & MacOS
+- Minicom - Linux 
+- screen - MacOS terminal
+- Developers can use e.g. VSCode Serial monitor plugin or Arduino IDE.
+
+## Configuration
+
+### Step 1: Connect to the device's WiFi network
+- Power up the device either using USB-C cable or 12V power adopter if using [IoT Edge Controller: rpz-d2x2t2ux-we](https://rapidomize.com/docs/solutions/iot/device/rpz-d2x2t2ux-we/), 
+- Device will automatically broadcast its own WiFi network with SSID `iot_edge` 
+- Connect your phone/tab/computer to the `iot_edge` WiFi SSID network. 
+
+### Step 2: Configure your WiFi credentials
+- Open a web browser and go to http://192.168.4.1. You will see the IoT Edge web UI.
+- From WiFi settings tab, select your WiFi network from the list of SSID shown and enter your WiFi password and click `Connect` button.
+- Make sure you have your WiFi network setup with DHCP, so that device will be able to connect and obtain a new IP address.
+- If successfully connected, it will show 'Success' message just above the tabs
+- Refresh your browser to see the IP address it has obtained.
+- Now you should be able to connect to the device using this new IP address on your WiFi network.
+
+### Step 3: Access the device on your network
+You should now be able to access the IoT Edge web UI by typing its new local IP address. 
+- Go to MQTT tab and provide Rapidomize MQTT broker detail or your own MQTT broker connection details.
+- Connect to MQTT broker by clicking 'Connect'. If successfully connected, it will show 'Success' message just above the tabs
+
+### Step 4: Configure the device peripherals
+Now you can configure the device peripherals as per your need. Refer to peripheral's data sheets for more information on required values for each peripheral.
+There are few example peripherals in the default firmware build. If you need any other peripherals, you can customize the code and build a new version of firmware binary. Refer to developer documentation for more info.
+
 
 # Status
 version 0.7.5 - 'Dugong Weasel'

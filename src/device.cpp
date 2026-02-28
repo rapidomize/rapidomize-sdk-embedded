@@ -36,24 +36,23 @@ void Device::init(){
         ESP.restart();
     }
 
-    memset(peripherals, 0, MAX_PERIPHERALS);
-    peripherals[senscnt++] = new PZEM01x(&prefs);
-    peripherals[senscnt++] = new Sht3x(&prefs);
-    peripherals[senscnt++] = new Switch(&prefs);
-    peripherals[senscnt++] = new Switch(&prefs,2);
-    peripherals[senscnt++] = new AHTx0(&prefs);
-    peripherals[senscnt++] = new BMP280(&prefs); 
-    
+    memset(peripherals, 0, sizeof(Peripheral*) * MAX_PERIPHERALS);
+    //std::fill(peripherals, peripherals+MAX_PERIPHERALS, static_cast<Peripheral*>(nullptr));
+    peripherals[pcnt++] = new PZEM01x(&prefs);
+    peripherals[pcnt++] = new Sht3x(&prefs);
+    peripherals[pcnt++] = new Switch(&prefs);
+    peripherals[pcnt++] = new Switch(&prefs,2);
+    peripherals[pcnt++] = new AHTx0(&prefs);
+    peripherals[pcnt++] = new BMP280(&prefs); 
     //TODO:
     /* peripherals[senscnt++] = new Relay(&prefs);
     peripherals[senscnt++] = new Relay(&prefs,2); */
-    for(int i=0; i < MAX_PERIPHERALS && peripherals[i] != nullptr; i++){
+    for(int i=0; i < MAX_PERIPHERALS && peripherals[i]; i++){
         peripherals[i]->init(nullptr);
     }
 
     pinMode(LED, OUTPUT);
     pinMode(BUZZER, OUTPUT);
-    //i2c_master_init();
 
     conprv.init(&mqttClient, peripherals, &prefs);
     Serial.println(F("IoT Edge is ready to connect"));
@@ -147,10 +146,10 @@ void Device::update(){
             char jreq[MAX_DATA]; jreq[0]='[';jreq[1]='\0';
             int size=1;
             int cnt=0;
-            for(int i = 0; i < MAX_PERIPHERALS && peripherals[i] != nullptr; i++){
+            for(int i = 0; i < MAX_PERIPHERALS && peripherals[i]; i++){
                 if(peripherals[i]->isr){//&& peripherals[i]->hasev()
                     char *data = peripherals[i]->read();
-                    if(data != nullptr){
+                    if(data){
                         if(cnt > 0){
                             jreq[size++]=','; jreq[size] = '\0';
                         }
@@ -177,11 +176,11 @@ void Device::update(){
                 jreq[0]='[';jreq[1]='\0';
                 size=1;
                 cnt=0;
-                for(int i = 0; i < MAX_PERIPHERALS && peripherals[i] != nullptr; i++){
+                for(int i = 0; i < MAX_PERIPHERALS && peripherals[i]; i++){
                     if(peripherals[i]->isr) continue; //skip if isr
 
                     char *data = peripherals[i]->read();
-                    if(data != nullptr){
+                    if(data){
                         if(cnt > 0){
                             jreq[size++]=','; jreq[size] = '\0';
                         }

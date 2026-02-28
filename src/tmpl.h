@@ -64,6 +64,9 @@ const char *main_tmpl = R"(
             .mt-30{
                 margin-top: 30px;
             }
+            .mb-40{
+                margin-bottom: 40px;
+            }
             .tabs {
                 display: flex;
                 flex-wrap: wrap;
@@ -135,6 +138,25 @@ const char *main_tmpl = R"(
                 border-color: #37a000;
                 background-image: url("data:image/svg+xml,%%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%%3e%%3cpath fill='none' stroke='%%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%%3e%%3c/svg%%3e");
             }
+            .sv-btn{
+                width: 24px;
+                height: 24px;
+                border: 0;
+                right: 0px;
+                padding: 4px;
+                color: #fff;
+                background: #37a000;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                font-size: 18px;
+            }
+            .sv-btn:hover { background-color: #297701; }
+            .ptitle{
+                border: 0; 
+                font-size: 20px; 
+                background-color: #fff;
+            }
         </style>
     </head>
     <body class="container column">
@@ -183,6 +205,7 @@ const char *main_tmpl = R"(
                 </form>
             </div>
         </div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/js/all.min.js"></script>
         <script>
             const forms = document.getElementsByTagName('form');
             const msg = document.getElementById('msg');
@@ -289,9 +312,9 @@ const char *wifi_tmpl = R"(
 <input type="radio" class="tabs__radio" name="atabs" id="tab2">
 <label for="tab2" class="tabs__label">WiFi</label>
 <div class="tabs__content">
-    <div class="row mt-10"><div style="margin-right: 10px;">IP:</div><div>%s</div></div>
     <form action="/wifi" method="post" class="column">
-        <h2>Available WiFi Networks</h2>
+        <h2>WiFi Networks</h2>
+        <div class="row mt-10"><div style="margin-right: 10px;">IP:</div><div>%s</div></div>
         <p>Select a WiFi network and provide it's credentials</p>
         <label class="card" style="padding: 10px;">SSIDs:
             <div class="column">
@@ -346,15 +369,11 @@ const char *peri_tmpl = R"(
 <input type="radio" class="tabs__radio" name="atabs" id="tab4">
 <label for="tab4" class="tabs__label">Peripherals</label>
 <div class="tabs__content">
-    <form action="/peri" method="post" class="column">
-        <h2>Peripherals</h2>
-        <p>Peripheral hardware configuration</p>
-        <div class="cards g-10">
-            %s
-        </div>
-
-        <input type="submit" value="Save" class="brdr" style="margin: 20px auto; width: 200px;">
-    </form>
+    <h2>Peripherals</h2>
+    <p>Peripheral hardware configuration</p>
+    <div class="cards g-10">
+        %s
+    </div>
 </div>
 )";
 

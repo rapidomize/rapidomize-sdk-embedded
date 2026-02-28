@@ -17,15 +17,21 @@ namespace rpz{
 
 const char *PZEM_tmpl = R"(
 <div  class="card">
-    <div class="row pos-r"><h3>%s</h3><input type="checkbox" name="%s" %s  class="pos-a" style="right: 0px;"></div>
-    <table>
-        <tr><td>Interface</td><td>RS485 - Modbus RTU</td></tr>
-        <tr><td>RX GPIO</td><td><input type="number" name="RX_PIN" value="35" disabled></td></tr>
-        <tr><td>TX GPIO</td><td><input type="number" name="TX_PIN" value="32" disabled></td></tr>
-        <!--<tr><td>DE GPIO</td><td><input type="number" name="TX_PIN" value="4" disabled></td></tr>-->
-        <tr><td>Baud Rate</td><td><input type="number" name="BAUD_RATE" value="9600" disabled></td></tr>
-        <tr><td>Slave Address (hex)</td><td><input type="text" name="SLAVE_ADDR" value="1" disabled></td></tr>
-    </table>  
+    <form action="/peri" method="post" class="column">
+        <div class="row pos-r mb-40">
+            <input type="text" name="id" class="pos-a ptitle" value="%s" readonly>
+            <input type="checkbox" name="enabled" %s  class="pos-a" style="right: 30px;">
+            <button type="submit" class="sv-btn brdr pos-a"><i class="fa-solid fa-floppy-disk"></i></button>
+        </div>
+        <table>
+            <tr><td>Interface</td><td>RS485 - Modbus RTU</td></tr>
+            <tr><td>RX GPIO</td><td><input type="number" name="RX_PIN" value="%d"></td></tr>
+            <tr><td>TX GPIO</td><td><input type="number" name="TX_PIN" value="%d"></td></tr>
+            <tr><td>DE GPIO</td><td><input type="number" name="DE_PIN" value="%d"></td></tr>
+            <tr><td>Baud Rate</td><td><input type="number" name="BAUD_RATE" value="%d"></td></tr>
+            <tr><td>Slave Address (hex)</td><td><input type="text" name="SLAVE_ADDR" value="%X"></td></tr>
+        </table>  
+    </form>
 </div>  
 )";
 
@@ -43,27 +49,25 @@ class PZEM01x: public Peripheral{
     PZEM01x(Preferences *prefs, int seq=1):Peripheral(prefs, seq){
         sprintf(name, "PZEM01x_%d", seq);
 
-        //String pname = name; pname+="_GPIO";
-
         //defaults
-        conf["SLAVE_ADDR"] = 0x01;  // Default slave address
-        conf["BAUD_RATE"] = 9600;   // Default baud rate
+        conf["RX_PIN"] = 3;         // A - RX pin (GPIO35) 
+        conf["TX_PIN"] = 1;         // B - TX pin (GPIO32)
         conf["DE_PIN"] = 4;         // DE/RE pin for MAX485
-        conf["RX_PIN"] = 35;        // A - RX pin (GPIO35) 
-        conf["TX_PIN"] = 32;        // B - TX pin (GPIO32)
+        conf["BAUD_RATE"] = 9600;   // Default baud rate
+        conf["SLAVE_ADDR"] = 0x01;  // Default slave address
 
         configure();
 
-        rs485addr = conf["SLAVE_ADDR"];  
-        baudRate = conf["BAUD_RATE"];    
-        dePin = conf["DE_PIN"];    
-        rxPin = conf["RX_PIN"];          
-        txPin = conf["TX_PIN"];          
+        rxPin = (uint8_t) conf["RX_PIN"];          
+        txPin = (uint8_t) conf["TX_PIN"];      
+        dePin = (uint8_t) conf["DE_PIN"];    
+        baudRate = (uint32_t) conf["BAUD_RATE"];    
+        rs485addr = (uint8_t) conf["SLAVE_ADDR"];  
     }
 
     char * confpg(){
         char *fr = (char *) malloc(4096*2);
-        sprintf(fr, PZEM_tmpl, name, name, enabled?"checked":"");//, pname, (int)conf["SLAVE_ADDR"]
+        sprintf(fr, PZEM_tmpl, name, enabled?"checked":"", rxPin, txPin, dePin, baudRate, rs485addr);
         return fr;
     }
 
@@ -77,8 +81,8 @@ class PZEM01x: public Peripheral{
                      rs485addr, rxPin, txPin, baudRate);//DE: %d, dePin
         
         // Configure DE/RE pin
-        /* pinMode(dePin, OUTPUT);
-        digitalWrite(dePin, LOW); // Start in receive mode */
+        pinMode(dePin, OUTPUT);
+        digitalWrite(dePin, LOW); // Start in receive mode
         
         // Initialize Serial2
         serialPort = &Serial2;
@@ -86,15 +90,16 @@ class PZEM01x: public Peripheral{
         
         // Test communication by reading voltage
         delay(1000); // Allow time for initialization
-        if (testCommunication()) {
-            Serial.printf(PSTR("%s communication OK.\n"), name);
-        } else {
+        if (!testCommunication()) {
             Serial.printf(PSTR("%s communication failed. Check wiring and power.\n"), name);
+            return;
         }
+        inited = true;
+        Serial.printf(PSTR("%s initialized.\n"), name);
     }
 
     char * read(){
-        if(!enabled) return nullptr;
+        if(!inited) return nullptr;
 
         // Read all measurement registers starting from 0x0000
         // PZEM-01x registers: 0x0000-Voltage, 0x0001-Current, 0x0002-Power, 
@@ -119,10 +124,6 @@ class PZEM01x: public Peripheral{
     }
 
     private:
-    int dePin;
-    int rxPin;
-    int txPin;
-    uint32_t baudRate;
     HardwareSerial* serialPort;
     
     // Modbus RTU CRC16 calculation
@@ -160,8 +161,8 @@ class PZEM01x: public Peripheral{
         request[7] = (crc >> 8) & 0xFF;
         
         // Set DE/RE pin HIGH for transmit
-        //digitalWrite(dePin, HIGH);
-        //delayMicroseconds(100);
+        digitalWrite(dePin, HIGH);
+        delayMicroseconds(100);
         
         // Send request
         serialPort->write(request, 8);
@@ -169,7 +170,7 @@ class PZEM01x: public Peripheral{
         
         // Set DE/RE pin LOW for receive
         delayMicroseconds(100);
-        //digitalWrite(dePin, LOW);
+        digitalWrite(dePin, LOW);
         
         return true;
     }

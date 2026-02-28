@@ -75,7 +75,7 @@ char * ConProvider::getMqtt(){
 char *ConProvider::getPeri(){
   String peri;
   
-  for(int i=0; i < MAX_PERIPHERALS && peripherals[i] != nullptr; i++){
+  for(int i=0; i < MAX_PERIPHERALS && peripherals[i]; i++){
     char *fr = peripherals[i]->confpg();
     peri += fr;
     free(fr);
@@ -149,7 +149,7 @@ void ConProvider::onPeri(AsyncWebServerRequest *request){
   JsonDocument doc;
   toJson(request, doc);
 
-  for(int i=0; i < MAX_PERIPHERALS && peripherals[i] != nullptr; i++){
+  for(int i=0; i < MAX_PERIPHERALS && peripherals[i]; i++){
     peripherals[i]->init(&doc);
   }
 
@@ -327,6 +327,7 @@ void ConProvider::toJson(AsyncWebServerRequest *request, JsonDocument &doc){
       request->send(400);
       return;
     }
+    
 
     // no data ?
     if (!data->length()) {
@@ -483,7 +484,7 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
   [this](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
       Serial.printf("Upload[%s]: index=%u, len=%u, final=%d\n", filename.c_str(), index, len, final);
 
-      if (request->getResponse() != nullptr) {
+      if (request->getResponse()) {
         Serial.println("Firmware upload aborted");
         return;
       }

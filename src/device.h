@@ -11,7 +11,7 @@
 namespace rpz{
 
 #ifndef RPZ_VERSION
-#define RPZ_VERSION "0.7.5-b25"
+#define RPZ_VERSION "0.7.5-b27" 
 #endif
 
 enum rpz_ops_t{
@@ -102,7 +102,7 @@ class Device{
 		PubSubClient mqttClient;
 		
 		Peripheral *peripherals[MAX_PERIPHERALS];
-		int senscnt = 0;
+		int pcnt = 0;
 		//just an indicator to show device is alive.
 		int indicate = 0;
 };

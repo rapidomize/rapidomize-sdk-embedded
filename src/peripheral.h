@@ -32,8 +32,7 @@ class Peripheral{
                     return false;
                 }
             }
-            conf[name] = enabled = (bool)conf[name] | false;
-            hasenabled = enabled;
+            conf["enabled"] = enabled = (bool)conf["enabled"] | false;
 
             //TODO: debug
             serializeJson(conf, sconf);
@@ -42,30 +41,18 @@ class Peripheral{
             return true;
 
         }
-        /* virtual bool configure(const char *dconf){
-            String sconf = prefs->getString(name, dconf);
-            auto err = deserializeJson(conf, sconf.c_str());
-            if(err){
-                Serial.printf(PSTR("Error parsing configuration for %s : %s\n"), name, sconf.c_str());
-                return false;
-            }
-            conf[name] = enabled = (bool)conf[name] | false;
-            serializeJson(conf, sconf);
-            Serial.printf(PSTR("enabled %d ==> %s\n"),enabled, sconf.c_str());
-            hasenabled = enabled;
-            return true;
-        } */
+
         virtual char * confpg() = 0;
         virtual void init(JsonDocument *jconf) {
-            if(!jconf) return;
+            if(!jconf || strcmp((const char*)(*jconf)["id"], name) != 0) return;
 
+            conf = *jconf;
             //for now only enable/disable
-            const JsonDocument _jconf = *jconf;
-            hasenabled = enabled;
-            enabled = conf[name] = _jconf[name] == "on";
+            conf["enabled"] = enabled = strcmp((const char*)(*jconf)["enabled"], "on") == 0;
+
             String sconf;
             serializeJson(conf, sconf);
-            Serial.printf(PSTR("\ninit1: %s\n"), sconf.c_str());
+            Serial.printf("\nsaving conf %s : %s\n", name, sconf.c_str());
             prefs->putString(name, sconf.c_str());
         }
         virtual char * read(){
@@ -77,34 +64,29 @@ class Peripheral{
         virtual void *exec(char *fn){
 			return nullptr;
 		}
-        
-        /* virtual bool hasev(){
-            if(triggered){
-                Serial.println("triggered");
-                unsigned long now = (unsigned long) (esp_timer_get_time() / 1000ULL);
-                if (now - lsttime > DEBOUNCE_DELAY ) {
-                    lsttime = now;
-                    Serial.println("triggered - true");
-                    return true;
-                }
-            }
-			return false;
-		} */
 
         virtual ~Peripheral() = default;
 
         bool isr = false;
+        char name[60];
 
     protected:
         Preferences *prefs;
         JsonDocument conf;
         bool enabled = false;
-        bool hasenabled = false;
         char data[512];
         int seq;
-        char name[60];
 
+        bool inited = false;
+        //I2C
+        uint8_t sda;
+        uint8_t scl;
         uint8_t i2caddr;
+        //RS485
+        uint8_t rxPin;
+        uint8_t txPin;
+        uint8_t dePin;
+        uint32_t baudRate;
         uint8_t rs485addr; //slave address
 };
 

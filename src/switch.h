@@ -9,15 +9,23 @@ namespace rpz{
 
 const char *Switch_tmpl = R"(
 <div  class="card">
-    <div class="row pos-r"><h3>%s</h3><input type="checkbox" name="%s" %s  class="pos-a" style="right: 0px;"></div>
-    <table>
-        <tr><td>GPIO</td><td>
-        <input type="number" name="%s_GPIO" value="%d" disabled>
-        <!--<select name="_s_GPIO">
-            <option value="14">14</option>
-            <option value="13">13</option>
-        </select>--></td>
-    </table>  
+  <form action="/peri" method="post" class="column">
+      <div class="row pos-r mb-40">
+          <input type="text" name="id" class="pos-a ptitle" value="%s" readonly>
+          <input type="checkbox" name="enabled" %s  class="pos-a" style="right: 30px;">
+          <button type="submit" class="sv-btn brdr pos-a"><i class="fa-solid fa-floppy-disk"></i></button>
+      </div>
+      <table>
+          <tr><td>GPIO</td><td>
+          <input type="number" name="GPIO" value="%d">
+          <!--<select name="GPIO">
+              <option value="14">14</option>
+              <option value="13">13</option>
+          </select>-->
+          </td>
+      </table>    
+  </form>
+    
 </div>  
 )";  
 
@@ -30,7 +38,7 @@ const int IN2=39; //GPIO39
 volatile bool triggered = false;
 // For debouncing
 unsigned long lsttime = 0;
-const unsigned long  DEBOUNCE_DELAY = 500L;  // in milliseconds  
+const unsigned long  DEBOUNCE_DELAY = 200L;  // in milliseconds  
 
 //N.B. debounce in the isr in a memeber funtion err - dangerous relocation: l32r: literal placed after use  
 void IRAM_ATTR handleInterrupt() {
@@ -50,12 +58,16 @@ class Switch: public Peripheral{
     Switch(Preferences *prefs, int seq=1):Peripheral(prefs,seq){
       sprintf(name, "DIN_%d", seq);
 
-      String pname = name; pname+="_GPIO";
-
-      //default
-      conf[pname] = seq == 1? 14 : 13;
+      //defaults
+      conf["GPIO"] = seq == 1? 14 : 13;
       configure();
-      gpio = (uint8_t)conf[pname];
+      gpio = (uint8_t)conf["GPIO"];
+    }
+
+    char * confpg(){
+        char *fr = (char *) malloc(4096);
+        sprintf(fr, Switch_tmpl, name, enabled?"checked":"", gpio);
+        return fr;
     }
 
     void init(JsonDocument *jconf) {
@@ -68,17 +80,12 @@ class Switch: public Peripheral{
       attachInterrupt(digitalPinToInterrupt(gpio), handleInterrupt, CHANGE);//LOW, CHANGE, RISING, FALLING
       // Parse configuration if provided
       // Format: "slave_addr,de_pin,rx_pin,tx_pin,baud_rate" or use defaults
+      inited = true;
       Serial.printf(PSTR("%s initialized with gpio: %d\n"), name, gpio);
-    }
-
-    char * confpg(){
-        char *fr = (char *) malloc(4096);
-        sprintf(fr, Switch_tmpl, name, name, enabled?"checked":"", name, gpio);
-        return fr;
     }
     
     char * read(){
-      if(!enabled) return nullptr;
+      if(!inited) return nullptr;
 
       if(triggered) {
           //toggle for next event

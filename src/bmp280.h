@@ -18,13 +18,19 @@ const char *BMP280_SEN_MSG  = R"({"pressure":%f, "altitude":%f})";
  
 const char *BMP280_tmpl = R"(
 <div  class="card">
-    <div class="row pos-r"><h3>%s</h3><input type="checkbox" name="%s" %s  class="pos-a" style="right: 0px;"></div>
-    <table>
-        <tr><td>Interface</td><td>I2C</td></tr>
-        <tr><td>SDA GPIO</td><td><input type="number" name="SDA" value="4" disabled></td></tr>
-        <tr><td>SCL GPIO</td><td><input type="number" name="SCL" value="16" disabled></td></tr>
-        <tr><td>I2C Address (hex)</td><td><input type="text" name="I2C_ADDRESS" value="%X" disabled></td></tr>
-    </table>  
+    <form action="/peri" method="post" class="column">
+        <div class="row pos-r mb-40">
+            <input type="text" name="id" class="pos-a ptitle" value="%s" readonly>
+            <input type="checkbox" name="enabled" %s  class="pos-a" style="right: 30px;">
+            <button type="submit" class="sv-btn brdr pos-a"><i class="fa-solid fa-floppy-disk"></i></button>
+        </div>
+        <table>
+            <tr><td>Interface</td><td>I2C</td></tr>
+            <tr><td>SDA GPIO</td><td><input type="number" name="SDA" value="%d"></td></tr>
+            <tr><td>SCL GPIO</td><td><input type="number" name="SCL" value="%d"></td></tr>
+            <tr><td>I2C Address (hex)</td><td><input type="text" name="I2C_ADDRESS" value="%X"></td></tr>
+        </table>  
+    </form>
 </div>  
 )"; 
 class BMP280: public Peripheral{
@@ -35,42 +41,55 @@ class BMP280: public Peripheral{
         BMP280(Preferences *prefs, int seq=1):Peripheral(prefs,seq){
             sprintf(name, "BMP280_%d", seq);
 
-            String pname = name; pname+="_I2CADDR";
-            conf[pname] = BMP280_ADDRESS;
+            conf["SDA"] = 4;
+            conf["SCL"] = 16;
+            conf["I2C_ADDRESS"] = BMP280_ADDRESS; //BMP280_ADDRESS_ALT
 
             configure();
-            i2caddr = (uint8_t)conf[pname];
+            sda = (uint8_t)conf["SDA"];
+            scl = (uint8_t)conf["SCL"];
+            i2caddr = (uint8_t)conf["I2C_ADDRESS"];
         }
         char * confpg(){
             char *fr = (char *) malloc(4096);
-            sprintf(fr, BMP280_tmpl, name, name, enabled?"checked":"", i2caddr);
+            sprintf(fr, BMP280_tmpl, name, enabled?"checked":"", sda, scl, i2caddr);
             return fr;
         }
         void init(JsonDocument *jconf) {
             Peripheral::init(jconf);
             if(!enabled) return;
 
-            Wire.begin(4, 16); //SDA=GPIO4  SCL=GPIO16 
+            Wire.begin(sda, scl); //SDA=GPIO4  SCL=GPIO16 
 
             // Initialize BMP280 sensor
-            if (!bmp.begin()) {
-                Serial.printf(PSTR("%s cannot initiate a connection address %X\n"), name, i2caddr);
-            }else
-                Serial.printf(PSTR("%s initialized.\n"), name);
+            if (!bmp.begin(i2caddr, BMP280_CHIPID)) {
+                Serial.printf(PSTR("%s cannot initiate a connection SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
+                return;
+            }
+
+            /* Default settings from datasheet. */
+            bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,    
+                            Adafruit_BMP280::SAMPLING_X2,         /* Temp. oversampling */
+                            Adafruit_BMP280::SAMPLING_X16,        /* Pressure oversampling */
+                            Adafruit_BMP280::FILTER_X16,          /* Filtering. */
+                            Adafruit_BMP280::STANDBY_MS_500);     /* Standby time. */
+
+            inited = true;
+            Serial.printf(PSTR("%s initialized.\n"), name);
 		}
 
         char * read(){
-            if(!enabled) return nullptr;
+            if(!inited) return nullptr;
 
             // Read data from BMP280
-            float pressure = bmp.readPressure() / 100.0F; // Convert to hPa
-            float altitude = bmp.readAltitude(1013.25); // Sea level pressure in hPa
+            float pressure = bmp.readPressure() / 100.0F;  // Convert to hPa
+            float altitude = bmp.readAltitude(1013.25);    // Adjust for sea level pressure in hPa
 
             if(!isnan(pressure) && !isnan(altitude)){
                 sprintf(data, BMP280_SEN_MSG, pressure, altitude);
                 return data;
-            }else   
-                Serial.printf("%s Failed to read pressure & altitude\n",  name);
+            }
+            Serial.printf("%s Failed to read pressure & altitude\n",  name);
             return nullptr;
 		}
 };
