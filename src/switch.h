@@ -59,7 +59,7 @@ class Switch: public Peripheral{
       sprintf(name, "DIN_%d", seq);
 
       //defaults
-      conf["GPIO"] = seq == 1? 14 : 13;
+      conf["GPIO"] = seq == 1? 36 : 39;
       configure();
       gpio = (uint8_t)conf["GPIO"];
     }

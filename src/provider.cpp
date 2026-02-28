@@ -250,7 +250,7 @@ bool ConProvider::connectWiFi(bool setup){
     while (WiFi.status() != WL_CONNECTED) {
       if(WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_DISCONNECTED){
           if(retry++ > 100){
-            Utils::buzzer(5);
+            Utils::buzzer(2);
             log(PSTR("Invalid SSID/Password! %s!!!"), 
                 WiFi.status() == WL_CONNECT_FAILED?"CONNECT_FAILED":WiFi.status() == WL_DISCONNECTED?"DISCONNECTED":"");
             return false;
@@ -261,7 +261,7 @@ bool ConProvider::connectWiFi(bool setup){
     }
 
     log(PSTR("Connected to WiFi SSID %s IP address: %s"), wifi_ssid.c_str(), WiFi.localIP().toString().c_str());
-    Utils::buzzer(2);
+    //Utils::buzzer(2);
 
     /* if (MDNS.begin("rapidomize")) {
       Serial.println(F("MDNS responder started"));
@@ -294,7 +294,7 @@ bool ConProvider::connectMQTT(bool setup){
     while(!(err = wifiClient.connect(host.c_str(), port))){
       Serial.print("?");
       if (count++ > 5) {
-          Utils::buzzer(5);
+          Utils::buzzer(2);
           log(PSTR("MQTT connection failed! Error code = %d"),  err);
           //Serial.println(sslClient.getLastSSLError());
           return false;
@@ -304,12 +304,12 @@ bool ConProvider::connectMQTT(bool setup){
     mqttClient->setClient(wifiClient);
     if(!mqttClient->connected()){
         if(mqttClient->connect(clientId.c_str(), username.c_str(), password.c_str())){//mqttClient->connect().connect(HOST, PORT)){
-            Utils::buzzer(2);
+            //Utils::buzzer(2);
             // subscribe to a topic:
             //log(PSTR("Subscribing to topic: %s"), subtopic);
             //mqttClient->subscribe(subtopic);
         }else{
-            Utils::buzzer(5);
+            Utils::buzzer(2);
             log(PSTR("Failed connecting to MQTT broker: ssl://%s:%d"), host.c_str(), port);
             return false;
         }
@@ -434,6 +434,13 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
     JsonDocument doc;
     toJson(request, doc);
 
+    /* const char * url = (const char *)doc["fw_url"];
+    if(!strtok((char *)url, ".bin")){
+      Serial.printf("URL Error: %s\n", url);
+      request->send(400, "application/json", "{\"err\":\"Invalid firmware download url?\"}");
+      return;
+    } */
+
     http.begin(this->wifiClient, (const char *)doc["fw_url"]);
     int httpCode = http.GET();
 
@@ -442,26 +449,31 @@ void ConProvider::init(PubSubClient *mqttClient, Peripheral **peripherals, Prefe
         WiFiClient* stream = http.getStreamPtr();
 
         // Start the update process
-        if (Update.begin(http.getSize(), U_FLASH)) {
-            Serial.println("Update started...");
-            // Write the stream to the flash memory
-            Update.writeStream(*stream);
-            if (Update.end()) {
-                Serial.println("Update successful! Rebooting...");
-                if (Update.canRollBack()) { // Optional: check if rollback is possible
-                    Serial.println("Can roll back to previous version.");
-                }
-                ESP.restart(); // Mandatory restart
-            } else {
-                Serial.println("Update failed!");
-                Update.printError(Serial);
-            }
-        } else {
-            Serial.println("Not enough space to start update!");
-            Update.printError(Serial);
+        if (!Update.begin(http.getSize(), U_FLASH)) {
+          Update.printError(Serial); //Update.errorString()
+          request->send(400, "application/json", "{\"err\":\"Firmware update begin failed...!\"}");
+          http.end();
+          return;
         }
+
+        // Write the stream to the flash memory
+        Update.writeStream(*stream);
+        if (!Update.end()) {
+          Update.printError(Serial);
+          request->send(400, "application/json", "{\"err\":\"Firmware update ending failed...!\"}");
+          http.end();
+          return;
+        }
+        /* if (Update.canRollBack()) { // Optional: check if rollback is possible
+            Serial.println("Can roll back to previous version.");
+        } */
+        log("Firmware update successfully! Device will be rebooted shortly to start new firmware");
+        request->send(200, "application/json", "{\"err\":\"Firmware update successfully! Device will be rebooted shortly to start new firmware!\"}");
+        delay(500);
+        this->onUpgrade(request);
     } else {
         Serial.printf("HTTP Update failed. Error: %d\n", httpCode);
+        request->send(400, "application/json", "{\"err\":\"Firmware update failed...!\"}");
     }
     http.end();
   });

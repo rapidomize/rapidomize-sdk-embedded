@@ -201,10 +201,10 @@ void Device::update(){
     }
 
     
-    if(indicate++ > 10){
+    /* if(indicate++ > 10){
         Utils::indicate();
         indicate = 0;
-    }
+    } */
 }
 
 }

@@ -178,11 +178,11 @@ const char *main_tmpl = R"(
             <div class="tabs__content">
                 <h2>Firmware Upgrade</h2>
                 <p>Upgrade firmware using a local file or remote url.</p>
-                <form action="/fwurl" method="post" class="card column brd">
+                <!--<form action="/fwurl" method="post" class="card column brd">
                     <h4>Use A Remote URL (OTA)</h4>
                     <input type="text" name="fw_url" value="https://github.com/rapidomize/rapidomize-sdk-embedded/releases/" class="fx-g">
                     <input type="submit"  value="Update" class="brdr" style="margin: 20px auto; width: 200px;">
-                </form>
+                </form>-->
                 <form action="/fwfile" method="post" enctype="multipart/form-data" class="card column brd mt-30">
                     <h4>Use A Local File</h4>
                     <input type="file" name="fw_file">

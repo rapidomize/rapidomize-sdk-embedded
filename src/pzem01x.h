@@ -50,8 +50,8 @@ class PZEM01x: public Peripheral{
         sprintf(name, "PZEM01x_%d", seq);
 
         //defaults
-        conf["RX_PIN"] = 3;         // A - RX pin (GPIO35) 
-        conf["TX_PIN"] = 1;         // B - TX pin (GPIO32)
+        conf["RX_PIN"] = 35;        // A - RX pin (GPIO35) 
+        conf["TX_PIN"] = 32;        // B - TX pin (GPIO32)
         conf["DE_PIN"] = 4;         // DE/RE pin for MAX485
         conf["BAUD_RATE"] = 9600;   // Default baud rate
         conf["SLAVE_ADDR"] = 0x01;  // Default slave address
