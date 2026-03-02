@@ -56,6 +56,7 @@ If you are customizing the firmware, download the source release tarball and fol
     ```
     wmic path Win32_SerialPort get DeviceID,Name
     ```
+    ![Device Manager](/img/device-manager.png)
 
 - Linux
     ```
@@ -89,13 +90,25 @@ where:
 - `PORT` - is the USB serial port identified above.
 - `FIRMWARE_BINARY` - is the binary file yu have downloaded from the release page e.g. `rapidomize-sdk-embedded-0.7.5-b26.bin`
 
+- You may also use Bootloader & Partions if you have a device that had different Bootloader & Partions previously. Download, additional binary files (bootloader.bin, partitions.bin, & boot_app0.bin) from the releases page.
+
+```
+esptool -p PORT -b 460800 --chip esp32 write-flash -z --flash-mode dio --flash-freq 40m --flash-size detect 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 rapidomize-sdk-embedded-0.7.5-b27.bin
+```
+
 After successfully executing the command, esptool will hard reset the device, causing it to reboot and run the new firmware.
 
 ### Flashing with Flash Download Tool
 If you have a computer with Windows you can use `Flash Download Tool` to flash the firmware.
 - Download & extract the latest binary release [Flash Download Tool](https://dl.espressif.com/public/flash_download_tool.zip)
 
-[Flash Download Tool User Guide](https://docs.espressif.com/projects/esp-test-tools/en/latest/esp32/production_stage/tools/flash_download_tool.html)
+    ![Firmware](/img/fw-flash-download.png)
+
+- You may also download Bootloader & Partions if you have a device that had different Bootloader & Partions previously.
+
+    ![Firmware, Bootloader & Partions](/img/fw-flash-download-boot.png)
+
+For more info on download tool, refer to [Flash Download Tool User Guide](https://docs.espressif.com/projects/esp-test-tools/en/latest/esp32/production_stage/tools/flash_download_tool.html)
 
 
 ## Monitoring
@@ -105,6 +118,12 @@ Once the flashing is done, device can be monitored using a serial monitor. Devic
 - Minicom - Linux 
 - screen - MacOS terminal
 - Developers can use e.g. VSCode Serial monitor plugin or Arduino IDE.
+
+![Putty](/img/putty-windows.png)
+
+![Putty](/img/putty-linux.png)
+
+
 
 ## Configuration
 
