@@ -101,12 +101,15 @@ After successfully executing the command, esptool will hard reset the device, ca
 ### Flashing with Flash Download Tool
 If you have a computer with Windows you can use `Flash Download Tool` to flash the firmware.
 - Download & extract the latest binary release [Flash Download Tool](https://dl.espressif.com/public/flash_download_tool.zip)
+- Use the previoiusly downloaded firmware binary as follows and click `start` to install it.
 
     ![Firmware](/img/fw-flash-download.png)
 
-- You may also download Bootloader & Partions if you have a device that had different Bootloader & Partions previously.
+- You may also download Bootloader & Partitions if you have a device that had different Bootloader & Partitions previously.
 
     ![Firmware, Bootloader & Partions](/img/fw-flash-download-boot.png)
+
+After successfully writing the firmware, device will reboot and run the new firmware.    
 
 For more info on download tool, refer to [Flash Download Tool User Guide](https://docs.espressif.com/projects/esp-test-tools/en/latest/esp32/production_stage/tools/flash_download_tool.html)
 
