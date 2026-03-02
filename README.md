@@ -17,7 +17,7 @@ Refer to above guideline to setup WiFi.
 ![Wifi Setup](/img/wifi.png)
 
 ### MQTT Setup
-Configure your MQTT broker (server) by setting the required topic, server IP addresses, client ID, server credentials and prefered publishing topic.
+Configure your MQTT broker (server) by setting the required topic, server IP addresses, client ID, server credentials and preferred publishing topic. The device publishes sensor messages to this topic.
 ![MQTT Setup](/img/mqtt.png)
 
 ### Peripheral H/W setup
