@@ -68,7 +68,6 @@ class PZEM01x: public Peripheral{
 
     char * confpg(){
         char *fr = (char *) malloc(4096*2);
-        Serial.printf("%s %d", (const char*)conf["SLAVE_ADDR"], rs485addr);
         sprintf(fr, PZEM_tmpl, name, enabled?"checked":"", rxPin, txPin, dePin, baudRate, rs485addr);
         return fr;
     }

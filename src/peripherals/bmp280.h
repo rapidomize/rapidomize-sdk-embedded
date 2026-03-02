@@ -44,7 +44,7 @@ class BMP280: public Peripheral{
             conf["SDA"] = 4;
             conf["SCL"] = 16;
             char buf[10];
-            sprintf(buf, "%d", BMP280_ADDRESS);
+            sprintf(buf, "%X", BMP280_ADDRESS);
             conf["I2C_ADDRESS"] = buf; 
             // conf["I2C_ADDRESS"] = BMP280_ADDRESS; //BMP280_ADDRESS_ALT
 

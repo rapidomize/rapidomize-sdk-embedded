@@ -45,7 +45,7 @@ class AHTx0: public Peripheral{
             conf["SDA"] = 4;
             conf["SCL"] = 16;
             char buf[10];
-            sprintf(buf, "%d", AHTX0_I2CADDR_DEFAULT);
+            sprintf(buf, "%X", AHTX0_I2CADDR_DEFAULT);
             conf["I2C_ADDRESS"] = buf; 
             // conf["I2C_ADDRESS"] =  AHTX0_I2CADDR_DEFAULT;
             configure();

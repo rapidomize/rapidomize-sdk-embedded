@@ -45,7 +45,7 @@ class Sht3x: public Peripheral{
         conf["SDA"] = 4;
         conf["SCL"] = 16;
         char buf[10];
-        sprintf(buf, "%d", SHT31_DEFAULT_ADDR); //default 0x44 - Set to 0x45 for alternate i2c addr
+        sprintf(buf, "%X", SHT31_DEFAULT_ADDR); //default 0x44 - Set to 0x45 for alternate i2c addr
         conf["I2C_ADDRESS"] = buf; 
         configure();
     }
