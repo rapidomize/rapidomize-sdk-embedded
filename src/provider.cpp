@@ -17,6 +17,9 @@ namespace rpz{
 #endif
 
 
+static const int PG_SIZE = 1024*32; //is this too large?
+static const int TAB_SIZE = 1024*4;
+
 /* 
   Connect to the WiFi SSID - 'iot_edge'
   Go to http://192.168.4.1 in a web browser to configure the gateway
@@ -29,7 +32,7 @@ void ConProvider::homePage(AsyncWebServerRequest *request, int status, const cha
   char *mqtt = getMqtt();
   char *peri = getPeri();
 
-  char *page = (char *) malloc(8192*4);
+  char *page = (char *) malloc(PG_SIZE);
   if(wifi_ssid.length() == 0 || wifi_pwd.length() == 0){
     sprintf(page, main_tmpl, err?err:"", dash, wifi, "", "");
   }else{
@@ -47,14 +50,14 @@ void ConProvider::homePage(AsyncWebServerRequest *request, int status, const cha
 
 //page submitted
 char *ConProvider::getDash(){
-  char *fr = (char *) malloc(4096);
+  char *fr = (char *) malloc(TAB_SIZE);
   sprintf(fr, dash_tmpl, "rpz-d2x2t2ux-we", RPZ_VERSION, ESP.getCpuFreqMHz(), ESP.getSketchSize()/1024, WiFi.localIP().toString().c_str(), "");
   return fr;
 }
 
 char * ConProvider::getWifi(){
   String ssidlst;
-  char *fr = (char *) malloc(4096);
+  char *fr = (char *) malloc(TAB_SIZE);
   for(int i=0;i<ssid_cnt && i < 20; i++){
     Serial.println(ssids[i].c_str());
     sprintf(fr, ssid_tmpl, ssids[i].c_str(), (wifi_ssid.equals(ssids[i]))?"checked":"", ssids[i].c_str());
@@ -67,7 +70,7 @@ char * ConProvider::getWifi(){
 }
 
 char * ConProvider::getMqtt(){
-  char *fr = (char *) malloc(4096);
+  char *fr = (char *) malloc(TAB_SIZE);
   sprintf(fr, mqtt_tmpl, host, port, clientId, username, "xxxxxxxx", topic, tls?"checked":"", ver, qos);
   return fr;
 }
@@ -80,7 +83,8 @@ char *ConProvider::getPeri(){
     peri += fr;
     free(fr);
   }
-  char *fr = (char *) malloc(4096*2);
+  //FIXME: use String instead
+  char *fr = (char *) malloc(TAB_SIZE*2);
   sprintf(fr, peri_tmpl, peri.c_str());
   return fr;
 }
@@ -234,8 +238,7 @@ void ConProvider::scan() {
   }
 }
 
-String wifiStatus(){
-    String status;
+const char * ConProvider::wifiStatus(){
     switch (WiFi.status()){
       case WL_NO_SSID_AVAIL: status =  "WL_NO_SSID_AVAIL"; break;
       case WL_CONNECT_FAILED:  status = "WL_CONNECT_FAILED. Check SSID/Password!"; break;
@@ -244,7 +247,7 @@ String wifiStatus(){
       default:
         break;
     }
-    return status;
+    return status.c_str();
 }
 
 bool ConProvider::connectWiFi(bool setup){
@@ -260,7 +263,7 @@ bool ConProvider::connectWiFi(bool setup){
     while (WiFi.status() != WL_CONNECTED) {
       log(PSTR("Cannot connect to WiFi, status: %s"), wifiStatus());
 
-      if(retry++ > 10) {
+      if(retry++ > 5) {
         Utils::buzzer(2);
         retry = 0;
       }
@@ -311,7 +314,7 @@ bool ConProvider::connectMQTT(bool setup){
           Utils::buzzer(2);
           return false;
         }
-        if(cnt++ > 10) {
+        if(cnt++ > 4) {
           Utils::buzzer(1);
           cnt = 0;
         }
@@ -326,7 +329,7 @@ bool ConProvider::connectMQTT(bool setup){
           && !mqttClient->connect(clientId.c_str(), username.c_str(), password.c_str())){
       if(cnt++ > 3) {
         Utils::buzzer(2);
-        log("Failed connecting to MQTT broker: ssl://%s:%d, with ClientID: %s Username: %s Password: xxxxxx...Check Credentials. Giving up after %d attempts", 
+        log("Failed connecting to MQTT broker: ssl://%s:%d, with ClientID: %s Username: %s Password: xxxxxx...Check Credentials.", 
           host.c_str(), port, clientId.c_str(), username.c_str(), retry);
         return false;
       }
@@ -350,7 +353,6 @@ void ConProvider::toJson(AsyncWebServerRequest *request, JsonDocument &doc){
       request->send(400);
       return;
     }
-    
 
     // no data ?
     if (!data->length()) {

@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 
+
 #include "device.h"
 #include "utils.h"
 #include "peripherals/peripheral.h"
@@ -17,6 +18,7 @@
 #include <ArduinoJson.h>
 
 
+
 rpz::Device device;
 
 namespace rpz{
@@ -28,7 +30,7 @@ const char *STATE_MSG = R"({"msg":{"_evt":"circuit", "state":%d},"op":2})";
 //FIXME: format
 const char *ACK_MSG = R"({"msg":{"n":"circuit", "v":%d},"op":2})";
 
-const char *PERIPHERALS = R"({"msg":{"n":"circuit", "v":%d},"op":2})";
+const char *PERIPHERALS_MSG = R"({"msg":{"n":"circuit", "v":%d},"op":2})";
 
 void Device::init(){
     if (!prefs.begin("rpzc", false)) {
@@ -139,6 +141,7 @@ void Device::send(const char* msg, const char* topic) {
 
 void Device::update(){
     Serial.print(".");
+    
     //conprv.events.send("my event content");//,"myevent",millis());
     if(conprv.hasSetup){
         if (!mqttClient.connected() && !conprv.connectMQTT()) {
@@ -147,7 +150,7 @@ void Device::update(){
         }
         mqttClient.loop();
 
-        char jreq[MAX_DATA]; jreq[0]='[';jreq[1]='\0';
+        char jreq[MAX_DATA]; jreq[0]='{';jreq[1]='\0';
         int size=1;
         int cnt=0;
         for(int i = 0; i < MAX_PERIPHERALS && peripherals[i]; i++){
@@ -167,7 +170,7 @@ void Device::update(){
             }
         }
         if(cnt > 0){
-            jreq[size++]=']'; jreq[size] = '\0';
+            jreq[size++]='}'; jreq[size] = '\0';
             send(jreq, conprv.topic.c_str());
         }
 
@@ -177,29 +180,33 @@ void Device::update(){
             // save the last time a message was sent
             prev = now;
 
-            jreq[0]='[';jreq[1]='\0';
+            String sjreq = "{";
+            //jreq[0]='[';jreq[1]='\0';
             size=1;
             cnt=0;
             for(int i = 0; i < MAX_PERIPHERALS && peripherals[i]; i++){
                 if(peripherals[i]->isr) continue; //skip if isr
 
-                //Serial.printf(PSTR("%s reading data.\n"), peripherals[i]->name);
+                // Serial.printf(PSTR("%s reading data.\n"), peripherals[i]->name);
                 char *data = peripherals[i]->read();
                 if(data){
                     if(cnt > 0){
-                        jreq[size++]=','; jreq[size] = '\0';
+                        sjreq+=", ";
+                        //jreq[size++]=','; jreq[size] = '\0';
                     }
                     int ssz = strlen(data);
                     //Serial.printf(PSTR("\ndata: %s, len: %d\n"), data, ssz);
                     
-                    strlcat(jreq, data, MAX_DATA);
+                    sjreq+=data;
+                    //strlcat(jreq, data, MAX_DATA);
                     size += ssz;
                     cnt++;
                 }
             }
             if(cnt > 0){
-                jreq[size++]=']'; jreq[size] = '\0';
-                send(jreq, conprv.topic.c_str());
+                sjreq+='}';
+                //jreq[size++]=']'; jreq[size] = '\0';
+                send(sjreq.c_str(), conprv.topic.c_str());
             }
         }
     }
@@ -209,6 +216,23 @@ void Device::update(){
         Utils::indicate();
         indicate = 0;
     } */
+}
+
+const char * Device::gettime(){
+    uint32_t start = millis();
+    time_t now;
+    while((millis()-start) <= 5000) {
+        time(&now);
+        localtime_r(&now, &timeinfo);
+        Serial.println(timeinfo.tm_year);
+        if(timeinfo.tm_year > (2016 - 1900)){
+            break;
+        }
+        delay(10);
+        yield();
+    }
+    Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+    return nullptr;
 }
 
 }

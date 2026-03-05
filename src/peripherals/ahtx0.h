@@ -14,7 +14,7 @@
 namespace rpz{
 
 
-const char *AHTx0_SEN_MSG  = R"({"temperature":%f, "humidity":%f})";    
+const char *AHTx0_MSG  = R"("temperature":%f, "humidity":%f)";    
 
 
 class AHTx0: public I2C{
@@ -36,16 +36,18 @@ class AHTx0: public I2C{
             configure();
         }
 
-        void init(JsonDocument *jconf) {
-            I2C::init(jconf);
+        bool init(JsonDocument *jconf) {
+            if(!I2C::init(jconf)) return false;
             
             // Initialize sensor
             if (!aht.begin()) {
                 Serial.printf(PSTR("%s cannot initiate a connection SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
-                return;
+                return false;
             }
             inited = true;
-            Serial.printf(PSTR("%s initialized.\n"), name);
+            Serial.printf(PSTR("%s initialized. SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
+
+            return true;
 		}
 
         char * read(){
@@ -56,7 +58,7 @@ class AHTx0: public I2C{
             aht.getEvent(&humidity, &temp);
 
             if(!isnan(temp.temperature) && !isnan(humidity.relative_humidity)){
-                sprintf(data, AHTx0_SEN_MSG, temp.temperature, humidity.relative_humidity);
+                sprintf(data, AHTx0_MSG, temp.temperature, humidity.relative_humidity);
                 return data;    
             }  
             Serial.printf("%s failed to read temperature & humidity\n",  name);

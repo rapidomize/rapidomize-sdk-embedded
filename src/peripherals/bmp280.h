@@ -14,7 +14,7 @@
 namespace rpz{
 
 
-const char *BMP280_SEN_MSG  = R"({"pressure":%f, "altitude":%f})";    
+const char *BMP280_MSG  = R"("pressure":%f, "altitude":%f)";    
  
 class BMP280: public I2C{
 
@@ -34,13 +34,13 @@ class BMP280: public I2C{
             configure();
         }
 
-        void init(JsonDocument *jconf) {
-            I2C::init(jconf);
+        bool init(JsonDocument *jconf) {
+            if(!I2C::init(jconf)) return false;
             
             // Initialize BMP280 sensor
             if (!bmp.begin(i2caddr, BMP280_CHIPID)) {
                 Serial.printf(PSTR("%s cannot initiate a connection SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
-                return;
+                return false;
             }
 
             /* Default settings from datasheet. */
@@ -52,6 +52,7 @@ class BMP280: public I2C{
 
             inited = true;
             Serial.printf(PSTR("%s initialized.\n"), name);
+            return true;
 		}
 
         char * read(){
@@ -62,7 +63,7 @@ class BMP280: public I2C{
             float altitude = bmp.readAltitude(1013.25);    // Adjust for sea level pressure in hPa
 
             if(!isnan(pressure) && !isnan(altitude)){
-                sprintf(data, BMP280_SEN_MSG, pressure, altitude);
+                sprintf(data, BMP280_MSG, pressure, altitude);
                 return data;
             }
             Serial.printf("%s Failed to read pressure & altitude\n",  name);

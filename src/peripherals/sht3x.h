@@ -12,7 +12,7 @@
 
 namespace rpz{
 
-const char *SHT3X_SEN_MSG  = R"({"temperature":%f, "humidity":%f})"; 
+const char *SHT3X_MSG  = R"("temperature":%.2f, "humidity":%.2f)"; 
 
 class Sht3x: public I2C{
 
@@ -32,16 +32,18 @@ class Sht3x: public I2C{
         configure();
     }
 
-    void init(JsonDocument *jconf) {
-        I2C::init(jconf);
+    bool init(JsonDocument *jconf) {
+        if(!I2C::init(jconf)) return false;
 
         if (!sht3x.begin(i2caddr)) {   
             Serial.printf(PSTR("%s cannot initiate a connection SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
-            return;
+            return false;
         }
         
         inited = true;
         Serial.printf(PSTR("%s initialized.\n"), name);
+
+        return true;
     }
 
     char * read(){
@@ -51,7 +53,7 @@ class Sht3x: public I2C{
         float humidity = sht3x.readHumidity();
 
         if(!isnan(temp) && !isnan(humidity)){
-            sprintf(data, SHT3X_SEN_MSG, temp, humidity);
+            sprintf(data, SHT3X_MSG, temp, humidity);
             return data;    
         }   
         Serial.printf("%s failed to read temperature & humidity\n",  name);

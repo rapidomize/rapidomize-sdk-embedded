@@ -8,6 +8,8 @@
 
 namespace rpz{
 
+const int TMPL_SIZE = 2048;
+
 struct KV{
     char name[64];
     union{
@@ -43,8 +45,8 @@ class Peripheral{
         }
 
         virtual char * confpg() = 0;
-        virtual void init(JsonDocument *jconf) {
-            if(!jconf || strcmp((const char*)(*jconf)["id"], name) != 0) return;
+        virtual bool init(JsonDocument *jconf) {
+            if(!jconf || strcmp((const char*)(*jconf)["id"], name) != 0) return false;
 
             conf = *jconf;
             //for now only enable/disable
@@ -57,6 +59,7 @@ class Peripheral{
             serializeJson(conf, sconf);
             Serial.printf("\nsaving conf %s : %s\n", name, sconf.c_str());
             prefs->putString(name, sconf.c_str());
+            return true;
         }
         virtual char * read(){
 			return nullptr;
@@ -88,9 +91,9 @@ class Peripheral{
         //RS485
         uint8_t rxPin;
         uint8_t txPin;
-        uint8_t dePin;
+        int8_t dePin;
         uint32_t baudRate;
-        uint8_t rs485addr; //slave address
+        uint8_t slvaddr; //slave address
 };
 
 }

@@ -145,13 +145,21 @@ const char *main_tmpl = R"(
                 right: 0px;
                 padding: 4px;
                 color: #fff;
-                background: #37a000;
+                background-color: #37a000;
                 cursor: pointer;
                 display: inline-flex;
                 align-items: center;
                 font-size: 18px;
             }
             .sv-btn:hover { background-color: #297701; }
+            .sv-btn:active{
+                background-color: #37a000;
+                border-color: #37a000;
+            }
+            .sv-btn:disabled {
+                background-color: gray;
+                border-color: gray;  
+            }
             .ptitle{
                 border: 0; 
                 font-size: 20px; 
@@ -239,6 +247,8 @@ const char *main_tmpl = R"(
                             msg.setAttribute('style', 'color: green;');
                         }
                         progressBar.style.display = 'none';
+                        const btn = forms[i].querySelector('.sv-btn');
+                        btn.disabled = true;
                     }, false);
 
                     xhr.addEventListener("error", function(evt) {
@@ -249,6 +259,8 @@ const char *main_tmpl = R"(
                         msg.textContent = error;
                         msg.setAttribute('style', 'color: red;');
                         progressBar.style.display = 'none';
+                        const btn = forms[i].querySelector('.sv-btn');
+                        btn.disabled = true;
                     }, false);
 
                     xhr.open("POST", forms[i].action);
@@ -272,6 +284,16 @@ const char *main_tmpl = R"(
 
                     xhr.send(body);
                 });
+
+                if(forms[i].action.indexOf('/peri') >= 0){
+                    let btn = forms[i].querySelector('.sv-btn');
+                    btn.disabled = true;
+                    forms[i].addEventListener('change', function() {
+                        btn.disabled = false;
+                        msg.textContent = 'You must save your changes';
+                        msg.setAttribute('style', 'color: green;');
+                    });                    
+                }
             }
 
             const evtSource = new EventSource("/evts");

@@ -1,6 +1,7 @@
 #ifndef RPZ_CLIENT_H_
 #define RPZ_CLIENT_H_
 
+#include <time.h>
 #include <Preferences.h>
 #include <PubSubClient.h> 
 
@@ -89,10 +90,12 @@ class Device{
         bool connect();
         static void recv(const char* topic, byte* payload, unsigned int length);
         void send(const char* msg, const char* topic);
+		const char *gettime();
 
         const long interval = 10000;
         unsigned long prev = 0;
         int count = 0;
+		struct tm timeinfo;
         
 		String host;
 		int port;

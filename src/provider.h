@@ -56,6 +56,8 @@ class ConProvider: public Utils{
         void onReset(AsyncWebServerRequest *request);
         void restart(AsyncWebServerRequest *request);
 
+        const char * wifiStatus();
+
         void initlog(){
              Utils::ev = &events;
         }
@@ -67,6 +69,7 @@ class ConProvider: public Utils{
         uint8_t ssid_cnt;
         String wifi_ssid;
         String wifi_pwd;
+        String status;
 
         AsyncEventSource events;
         AsyncWebServer server;

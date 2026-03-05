@@ -34,17 +34,19 @@ class I2C: public Peripheral{
     public: 
         I2C(Preferences *prefs, int seq=1):Peripheral(prefs,seq){
              //some defaults - //https://rapidomize.com/docs/solutions/iot/device/rpz-d2x2t2ux-we/ 
+             //each impls will override
             conf["SDA"] = 4;
             conf["SCL"] = 16;
+            conf["I2C_ADDRESS"] = ""; 
         }
         
         char * confpg(){
-            char *fr = (char *) malloc(4096);
+            char *fr = (char *) malloc(TMPL_SIZE);
             sprintf(fr, I2C_tmpl, name, enabled?"checked":"", sda, scl, i2caddr);
             return fr;
         }
 
-        void init(JsonDocument *jconf) {
+        bool init(JsonDocument *jconf) {
             Peripheral::init(jconf);
             
             sda = (uint8_t)conf["SDA"];
@@ -53,10 +55,11 @@ class I2C: public Peripheral{
 
             if(!enabled) {
                 inited = false;
-                return;
+                return false;
             }
             
             Wire.begin(sda, scl); //SDA=GPIO4  SCL=GPIO16 
+            return true;
 		}
 };
 

@@ -19,7 +19,7 @@ const char *DS18B20_tmpl = R"(
 </div>  
 )";     
 
-const char *DS18B20_MSG  = R"({"temperature01":%f, "temperature02":%f})";       
+const char *DS18B20_MSG  = R"("temperature01":%f, "temperature02":%f)";       
 
 class DS18B20: public Peripheral{
   public: 
@@ -29,7 +29,7 @@ class DS18B20: public Peripheral{
         String pname = name; pname+="_I2CADDR";
     }
     char * confpg(){
-        char *fr = (char *) malloc(4096);
+        char *fr = (char *) malloc(TMPL_SIZE);
         sprintf(fr, DS18B20_tmpl, name, name, enabled?"checked":"");
         return fr;
     }

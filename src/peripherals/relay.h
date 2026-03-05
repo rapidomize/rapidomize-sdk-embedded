@@ -25,7 +25,6 @@ const char *Relay_tmpl = R"(
           </td>
       </table> 
   </form>
-    
 </div>  
 )"; 
 
@@ -48,22 +47,24 @@ class Relay: public Peripheral{
       configure();
     }
     char * confpg(){
-        char *fr = (char *) malloc(4096);
+        char *fr = (char *) malloc(TMPL_SIZE);
         sprintf(fr, Relay_tmpl, name, enabled?"checked":"", gpio);
         return fr;
     }
-    void init(JsonDocument *jconf) {
+    bool init(JsonDocument *jconf) {
       Peripheral::init(jconf);
+      gpio = (uint8_t)conf["GPIO"];
+
       if(!enabled) {
           inited = false;
-          return;
+          return false;
       }
-      gpio = (uint8_t)conf["GPIO"];
       
       pinMode(gpio, OUTPUT);
 
       inited = true;
       Serial.printf(PSTR("%s initialized.\n"), name);
+      return true;
     }
 
     void *write(char *data){
