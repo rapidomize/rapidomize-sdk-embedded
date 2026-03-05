@@ -99,7 +99,7 @@ class DIN: public Peripheral{
       if(!mode) mode = CHANGE;
 
       //check if already setup
-      if(inited) detachInterrupt(gpio);
+      if(inited) detachInterrupt(digitalPinToInterrupt(gpio));
       gpio = _gpio;
 
       if(!enabled) {
