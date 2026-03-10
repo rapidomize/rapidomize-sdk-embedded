@@ -23,7 +23,7 @@ const char *DS18B20_MSG  = R"("temperature01":%f, "temperature02":%f)";
 
 class DS18B20: public Peripheral{
   public: 
-    DS18B20(Preferences *prefs, int seq=1):Peripheral(prefs,seq), ds1(33), ds2(14){
+    DS18B20(Preferences *prefs, ConProvider *conprv, int seq=1):Peripheral(prefs, conprv, seq), ds1(33), ds2(14){
         sprintf(name, "DS18B20_%d", seq);
 
         String pname = name; pname+="_I2CADDR";

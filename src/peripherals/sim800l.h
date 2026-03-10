@@ -21,7 +21,7 @@ const char* phoneNumber = "2222222222";// this is your phone numner (replace it)
 
 class SIM800: public Peripheral{
     public: 
-    SIM800(Preferences *prefs):Peripheral(prefs){
+    SIM800(Preferences *prefs, ConProvider *conprv, int seq=1):Peripheral(prefs, conprv, seq){
     }
     char * confpg(){return "";}
     void init(char *conf){

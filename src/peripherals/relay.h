@@ -39,7 +39,7 @@ class Relay: public Peripheral{
    uint8_t gpio;
 
   public: 
-    Relay(Preferences *prefs, int seq=1):Peripheral(prefs,seq){
+    Relay(Preferences *prefs, ConProvider *conprv, int seq=1):Peripheral(prefs, conprv, seq){
       sprintf(name, "Relay_%d", seq);
 
       //defaults
@@ -63,7 +63,7 @@ class Relay: public Peripheral{
       pinMode(gpio, OUTPUT);
 
       inited = true;
-      Serial.printf(PSTR("%s initialized.\n"), name);
+      conprv->log(PSTR("%s initialized.\n"), name);
       return true;
     }
 

@@ -6,7 +6,10 @@
 #include <ArduinoJson.h>
 
 
+
 namespace rpz{
+
+class ConProvider;    
 
 const int TMPL_SIZE = 2048;
 
@@ -21,8 +24,9 @@ struct KV{
 
 class Peripheral{
     public: 
-        Peripheral(Preferences *prefs, int seq=1):seq(seq){
+        Peripheral(Preferences *prefs, ConProvider *conprv, int seq=1):seq(seq){
             this->prefs = prefs;
+            this->conprv = conprv;
         }
 
         virtual bool configure(){
@@ -50,10 +54,7 @@ class Peripheral{
 
             conf = *jconf;
             //for now only enable/disable
-            if((*jconf)["enabled"])
-                conf["enabled"] = enabled = strcmp((const char*)(*jconf)["enabled"], "on") == 0;
-            else
-                conf["enabled"] = enabled = false;
+            conf["enabled"] = enabled = (*jconf)["enabled"]? strcmp((const char*)(*jconf)["enabled"], "on") == 0 :false;
 
             String sconf;
             serializeJson(conf, sconf);
@@ -78,6 +79,7 @@ class Peripheral{
 
     protected:
         Preferences *prefs;
+        ConProvider *conprv;
         JsonDocument conf;
         bool enabled = false;
         char data[512];

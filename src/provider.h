@@ -3,6 +3,7 @@
 
 #include <Preferences.h>
 #include <AsyncTCP.h>
+#include <NetworkClient.h>
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <PubSubClient.h>
@@ -16,18 +17,19 @@ namespace rpz{
 //connection & config provider
 class ConProvider: public Utils{
     public: 
-        ConProvider(): server(80), host("ics.rapidomize.com"), port(8883), events("/evts"){
+        ConProvider(): server(80), events("/evts"){
             server.addHandler(&events);
         }
 
         void init(PubSubClient *mqttClient, Peripheral **peripherals, Preferences *prefs);
-        bool connectMQTT(bool setup=false);
+        bool connectMQTT(bool wsetup=false);
+        bool canConnectMQTT();
 
         bool hasSetup = false;
         
         //mqtt
         String host; 
-		int port; 
+		short port; 
         String clientId;
         String username;
         String password;
@@ -35,6 +37,10 @@ class ConProvider: public Utils{
         bool tls;
         String ver;
         uint8_t qos;
+        int timeout = 3;  //seconds
+        bool rpzfmt = true; //Enable/Disable Rapidomize platform message format
+        bool wastls = false; //if we were using secure net client
+        bool iswsetup = false;
 
     private:
         bool connectWiFi(bool setup=false);
@@ -73,10 +79,10 @@ class ConProvider: public Utils{
 
         AsyncEventSource events;
         AsyncWebServer server;
-        WiFiClient wifiClient; 
-        PubSubClient *mqttClient;
-        Preferences *prefs;
-        Peripheral **peripherals;
+        NetworkClient *netClient = nullptr;
+        PubSubClient *mqttClient = nullptr;
+        Preferences *prefs = nullptr;
+        Peripheral **peripherals = nullptr;
 };
 
 }

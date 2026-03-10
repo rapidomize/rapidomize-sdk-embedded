@@ -21,7 +21,7 @@ const char message[] = "input01 is triggered";
 
 class SIM7600 : public Peripheral{
   public:
-    SIM7600(Preferences *prefs):Peripheral(prefs){
+    SIM7600(Preferences *prefs, ConProvider *conprv, int seq=1):Peripheral(prefs, conprv, seq){
     }
     char * confpg(){return "";}
     void init(char * conf){

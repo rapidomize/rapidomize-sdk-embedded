@@ -19,7 +19,7 @@ class Sht3x: public I2C{
     Adafruit_SHT31 sht3x = Adafruit_SHT31();
 
     public: 
-    Sht3x(Preferences *prefs, int seq=1):I2C(prefs,seq){
+    Sht3x(Preferences *prefs, ConProvider *conprv, int seq=1):I2C(prefs, conprv, seq){
         sprintf(name, "SHT3x_%d", seq);
 
         /* defaults can be overridden here
@@ -36,12 +36,12 @@ class Sht3x: public I2C{
         if(!I2C::init(jconf)) return false;
 
         if (!sht3x.begin(i2caddr)) {   
-            Serial.printf(PSTR("%s cannot initiate a connection SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
+            conprv->log(PSTR("%s cannot initiate a connection SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
             return false;
         }
         
         inited = true;
-        Serial.printf(PSTR("%s initialized.\n"), name);
+        conprv->log(PSTR("%s initialized. SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
 
         return true;
     }
@@ -56,7 +56,7 @@ class Sht3x: public I2C{
             sprintf(data, SHT3X_MSG, temp, humidity);
             return data;    
         }   
-        Serial.printf("%s failed to read temperature & humidity\n",  name);
+        conprv->log("%s failed to read temperature & humidity\n",  name);
         return nullptr;
     }
 

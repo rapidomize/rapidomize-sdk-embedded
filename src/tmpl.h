@@ -188,7 +188,7 @@ const char *main_tmpl = R"(
                 <p>Upgrade firmware using a local file or remote url.</p>
                 <!--<form action="/fwurl" method="post" class="card column brd">
                     <h4>Use A Remote URL (OTA)</h4>
-                    <input type="text" name="fw_url" value="https://github.com/rapidomize/rapidomize-sdk-embedded/releases/" class="fx-g">
+                    <input type="text" name="fw_url" value="https://github.com/rapidomize/rapidomize-sdk-embedded/releases/latest/download/rapidomize-sdk-embedded.bin" class="fx-g">
                     <input type="submit"  value="Update" class="brdr" style="margin: 20px auto; width: 200px;">
                 </form>-->
                 <form action="/fwfile" method="post" enctype="multipart/form-data" class="card column brd mt-30">
@@ -364,13 +364,13 @@ const char *mqtt_tmpl = R"(
         <p>Specify MQTT Broker details.</p>
         <div class="column" style="grid-gap: 5px;">
             <table class="card">
-                <tr><td>Host</td><td class="fx"><input type="text" name="host" value="%s" style="flex-grow: 1"></td></tr>
+                <tr><td>Host</td><td class="fx"><input type="text" name="host" value="%s" class="fx-g"></td></tr>
                 <tr><td>Port</td><td><input type="number" name="port" value="%d"></td></tr>
-                <tr><td>Client ID</td><td class="fx"><input type="text" name="clientId" value="%s"  style="flex-grow: 1"></td></tr>
-                <tr><td>Username</td><td class="fx"><input type="text" name="username" value="%s"  style="flex-grow: 1"></td></tr>
-                <tr><td>Password</td><td><input type="password" name="password" value="%s"></td></tr>
-                <tr><td style="width: 150px;">Publishing Topic</td><td class="fx"><input type="text" name="topic"  value="%s" style="flex-grow: 1"></td></tr>
-                <tr><td>TLS/SSL</td><td><input type="checkbox" name="tls" disabled %s></td></tr>
+                <tr><td>TLS/SSL</td><td><input type="checkbox" name="tls" %s></td></tr>
+                <tr><td>Client ID</td><td class="fx"><input type="text" name="clientId" value="%s"  class="fx-g"></td></tr>
+                <tr><td>Username</td><td class="fx"><input type="text" name="username" value="%s"  class="fx-g"></td></tr>
+                <tr><td>Password</td><td class="fx"><input type="password" name="password" value="%s" class="fx-g"></td></tr>
+                <tr><td style="width: 150px;">Publishing Topic</td><td class="fx"><input type="text" name="topic"  value="%s" class="fx-g"></td></tr>
                 <tr><td>Version</td><td>
                     <select name="ver" value="%s">
                         <option value="3.1.1">3.1.1</option>
@@ -384,6 +384,7 @@ const char *mqtt_tmpl = R"(
                         <option value="2">2</option>
                     </select>  
                 </td></tr>
+                <tr><td>Rapidomize Format</td><td><input type="checkbox" name="rpzfmt" %s></td></tr>
             </table>
         </div>
         <input type="submit" value="Connect" class="brdr" style="margin: 20px auto; width: 200px;">

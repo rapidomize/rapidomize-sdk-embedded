@@ -26,11 +26,9 @@ namespace rpz{
 const bool DEBUG=true;
 const int  MAX_DATA=1024;
 
-const char *STATE_MSG = R"({"msg":{"_evt":"circuit", "state":%d},"op":2})";
+const char *STATE_MSG = R"({"msg":%s,"op":2})";
 //FIXME: format
 const char *ACK_MSG = R"({"msg":{"n":"circuit", "v":%d},"op":2})";
-
-const char *PERIPHERALS_MSG = R"({"msg":{"n":"circuit", "v":%d},"op":2})";
 
 void Device::init(){
     if (!prefs.begin("rpzc", false)) {
@@ -40,12 +38,12 @@ void Device::init(){
 
     memset(peripherals, 0, sizeof(Peripheral*) * MAX_PERIPHERALS);
     //std::fill(peripherals, peripherals+MAX_PERIPHERALS, static_cast<Peripheral*>(nullptr));
-    peripherals[pcnt++] = new PZEM01x(&prefs);
-    peripherals[pcnt++] = new Sht3x(&prefs);
-    peripherals[pcnt++] = new DIN(&prefs);
-    peripherals[pcnt++] = new DIN(&prefs,2);
-    peripherals[pcnt++] = new AHTx0(&prefs);
-    peripherals[pcnt++] = new BMP280(&prefs); 
+    peripherals[pcnt++] = new PZEM01x(&prefs, &conprv);
+    peripherals[pcnt++] = new Sht3x(&prefs, &conprv);
+    peripherals[pcnt++] = new DIN(&prefs, &conprv);
+    peripherals[pcnt++] = new DIN(&prefs, &conprv, 2);
+    peripherals[pcnt++] = new AHTx0(&prefs, &conprv);
+    peripherals[pcnt++] = new BMP280(&prefs, &conprv); 
     //TODO:
     /* peripherals[senscnt++] = new Relay(&prefs);
     peripherals[senscnt++] = new Relay(&prefs,2); */
@@ -57,7 +55,7 @@ void Device::init(){
     pinMode(BUZZER, OUTPUT);
 
     conprv.init(&mqttClient, peripherals, &prefs);
-    Serial.println(F("IoT Edge is ready to connect"));
+    Serial.println("IoT Edge is ready to connect");
 }
 
 
@@ -141,81 +139,59 @@ void Device::send(const char* msg, const char* topic) {
 
 void Device::update(){
     Serial.print(".");
+    yield();
+
+    while((conprv.hasSetup || conprv.canConnectMQTT()) 
+            && !conprv.iswsetup && !mqttClient.connected()) {
+        conprv.log("MQTT is not connected, retrying...");
+        if(conprv.connectMQTT()) break;
+        delay(100);
+        Serial.print("*");
+        yield();
+    }
     
-    //conprv.events.send("my event content");//,"myevent",millis());
     if(conprv.hasSetup){
-        if (!mqttClient.connected() && !conprv.connectMQTT()) {
-            conprv.log("MQTT is not connected, retrying...");
-            return;
-        }
         mqttClient.loop();
 
-        char jreq[MAX_DATA]; jreq[0]='{';jreq[1]='\0';
-        int size=1;
+        String sjreq = "{";
         int cnt=0;
-        for(int i = 0; i < MAX_PERIPHERALS && peripherals[i]; i++){
-            if(peripherals[i]->isr){//&& peripherals[i]->hasev()
-                char *data = peripherals[i]->read();
-                if(data){
-                    if(cnt > 0){
-                        jreq[size++]=','; jreq[size] = '\0';
-                    }
-                    int ssz = strlen(data);
-                    //Serial.printf(PSTR("\ndata: %s, len: %d\n"), data, ssz);
-                    
-                    strlcat(jreq, data, MAX_DATA);
-                    size += ssz;
-                    cnt++;
-                }
-            }
-        }
-        if(cnt > 0){
-            jreq[size++]='}'; jreq[size] = '\0';
-            send(jreq, conprv.topic.c_str());
-        }
-
         //report per defined interval
         const unsigned long now = millis();
-        if (now - prev >= interval) {
-            // save the last time a message was sent
-            prev = now;
-
-            String sjreq = "{";
-            //jreq[0]='[';jreq[1]='\0';
-            size=1;
-            cnt=0;
-            for(int i = 0; i < MAX_PERIPHERALS && peripherals[i]; i++){
-                if(peripherals[i]->isr) continue; //skip if isr
-
-                // Serial.printf(PSTR("%s reading data.\n"), peripherals[i]->name);
-                char *data = peripherals[i]->read();
-                if(data){
-                    if(cnt > 0){
-                        sjreq+=", ";
-                        //jreq[size++]=','; jreq[size] = '\0';
-                    }
-                    int ssz = strlen(data);
-                    //Serial.printf(PSTR("\ndata: %s, len: %d\n"), data, ssz);
-                    
-                    sjreq+=data;
-                    //strlcat(jreq, data, MAX_DATA);
-                    size += ssz;
-                    cnt++;
+        bool read = now - prev >= interval;
+        // save the last time a message was read
+        if (read) prev = now;
+        
+        for(int i = 0; i < MAX_PERIPHERALS && peripherals[i]; i++){
+            char *data = nullptr;
+            if(peripherals[i]->isr){//&& peripherals[i]->hasev()
+                data = peripherals[i]->read();
+            }else{
+                //report per defined interval
+                if (read) {                    
+                    // Serial.printf(PSTR("%s reading data.\n"), peripherals[i]->name);
+                    data = peripherals[i]->read();
                 }
             }
-            if(cnt > 0){
-                sjreq+='}';
-                //jreq[size++]=']'; jreq[size] = '\0';
-                send(sjreq.c_str(), conprv.topic.c_str());
+            if(data){
+                if(cnt > 0){
+                    sjreq+=", ";
+                }
+                //Serial.printf(PSTR("\ndata: %s, len: %d\n"), data, ssz);
+                sjreq+=data;
+                cnt++;
+            }            
+        }
+        if(cnt > 0){
+            sjreq+="}";
+            char *data = (char *) sjreq.c_str();
+            char msg[strlen(data) + 32];
+            if(conprv.rpzfmt){
+                sprintf(msg, STATE_MSG, data);
+                data = msg;
             }
+            send(data, conprv.topic.c_str());
         }
     }
-
-    
-    /* if(indicate++ > 10){
-        Utils::indicate();
-        indicate = 0;
-    } */
 }
 
 const char * Device::gettime(){

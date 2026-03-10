@@ -32,7 +32,7 @@ const char *I2C_tmpl = R"(
 class I2C: public Peripheral{
 
     public: 
-        I2C(Preferences *prefs, int seq=1):Peripheral(prefs,seq){
+        I2C(Preferences *prefs, ConProvider *conprv, int seq=1):Peripheral(prefs, conprv, seq){
              //some defaults - //https://rapidomize.com/docs/solutions/iot/device/rpz-d2x2t2ux-we/ 
              //each impls will override
             conf["SDA"] = 4;

@@ -61,7 +61,7 @@ class DIN: public Peripheral{
     unsigned long lsttime = 0;
 
     public: 
-    DIN(Preferences *prefs, int seq=1):Peripheral(prefs,seq){
+    DIN(Preferences *prefs, ConProvider *conprv, int seq=1):Peripheral(prefs, conprv, seq){
       sprintf(name, "DIN_%d", seq);
 
       //some defaults - //https://rapidomize.com/docs/solutions/iot/device/rpz-d2x2t2ux-we/ 
@@ -112,7 +112,7 @@ class DIN: public Peripheral{
 
       //N.B. debounce in the isr in a memeber funtion err - dangerous relocation: l32r: literal placed after use  
       // attachInterrupt(digitalPinToInterrupt(gpio), std::bind(&DIN::handleInterrupt, this), FALLING);
-      attachInterrupt(digitalPinToInterrupt(gpio), [=]() IRAM_ATTR {
+      attachInterrupt(digitalPinToInterrupt(gpio), [this]() IRAM_ATTR {
         unsigned long now = millis();
         if (now - lsttime > DEBOUNCE_DELAY) {
           triggered = true;
@@ -122,7 +122,7 @@ class DIN: public Peripheral{
       }, mode);
 
       inited = true;
-      Serial.printf(PSTR("%s initialized with gpio: %d\n"), name, gpio);
+      conprv->log(PSTR("%s initialized with gpio: %d\n"), name, gpio);
       return true;
     }
     

@@ -22,7 +22,7 @@ class AHTx0: public I2C{
     Adafruit_AHTX0 aht;
 
     public: 
-        AHTx0(Preferences *prefs, int seq=1):I2C(prefs,seq){
+        AHTx0(Preferences *prefs, ConProvider *conprv, int seq=1):I2C(prefs, conprv, seq){
             sprintf(name, "AHTx0_%d", seq);
 
             /* defaults can be overridden here
@@ -41,11 +41,11 @@ class AHTx0: public I2C{
             
             // Initialize sensor
             if (!aht.begin()) {
-                Serial.printf(PSTR("%s cannot initiate a connection SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
+                conprv->log(PSTR("%s cannot initiate a connection SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
                 return false;
             }
             inited = true;
-            Serial.printf(PSTR("%s initialized. SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
+            conprv->log(PSTR("%s initialized. SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
 
             return true;
 		}
@@ -61,7 +61,7 @@ class AHTx0: public I2C{
                 sprintf(data, AHTx0_MSG, temp.temperature, humidity.relative_humidity);
                 return data;    
             }  
-            Serial.printf("%s failed to read temperature & humidity\n",  name);
+            conprv->log("%s failed to read temperature & humidity\n",  name);
             return nullptr;
 		}
 };

@@ -21,7 +21,7 @@ class BMP280: public I2C{
     Adafruit_BMP280 bmp;   
 
     public: 
-        BMP280(Preferences *prefs, int seq=1):I2C(prefs,seq){
+        BMP280(Preferences *prefs, ConProvider *conprv, int seq=1):I2C(prefs, conprv, seq){
             sprintf(name, "BMP280_%d", seq);
 
             /* defaults can be overridden here
@@ -39,7 +39,7 @@ class BMP280: public I2C{
             
             // Initialize BMP280 sensor
             if (!bmp.begin(i2caddr, BMP280_CHIPID)) {
-                Serial.printf(PSTR("%s cannot initiate a connection SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
+                conprv->log(PSTR("%s cannot initiate a connection SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
                 return false;
             }
 
@@ -51,7 +51,7 @@ class BMP280: public I2C{
                             Adafruit_BMP280::STANDBY_MS_500);     /* Standby time. */
 
             inited = true;
-            Serial.printf(PSTR("%s initialized.\n"), name);
+            conprv->log(PSTR("%s initialized. SDA: %d,  SCL: %d, Address %X\n"), name, sda, scl, i2caddr);
             return true;
 		}
 
@@ -66,7 +66,7 @@ class BMP280: public I2C{
                 sprintf(data, BMP280_MSG, pressure, altitude);
                 return data;
             }
-            Serial.printf("%s Failed to read pressure & altitude\n",  name);
+            conprv->log("%s Failed to read pressure & altitude\n",  name);
             return nullptr;
 		}
 };

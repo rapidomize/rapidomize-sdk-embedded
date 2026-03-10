@@ -24,7 +24,7 @@ class PZEM01x: public Modbus{
         
     public: 
 
-    PZEM01x(Preferences *prefs, int seq=1):Modbus(prefs, seq){
+    PZEM01x(Preferences *prefs, ConProvider *conprv, int seq=1):Modbus(prefs, conprv, seq){
         sprintf(name, "PZEM01x_%d", seq);
         
         //defaults
@@ -39,13 +39,8 @@ class PZEM01x: public Modbus{
     bool init(JsonDocument *jconf) {
        if(!Modbus::init(jconf)) return false;
 
-        /* if (!testCommunication()) {
-            Serial.printf(PSTR("%s communication failed. Check wiring and power.\n"), name);
-            return false;
-        } */
-
         inited = true;
-        Serial.printf(PSTR("%s initialized. Slave: 0x%02X, RX: %d, TX: %d, DE: %d, Baud: %lu\n"), name,
+        conprv->log(PSTR("%s initialized. Slave: 0x%02X, RX: %d, TX: %d, DE: %d, Baud: %lu\n"), name,
                      slvaddr, rxPin, txPin, dePin, baudRate);
         return true;
     }
@@ -78,19 +73,6 @@ class PZEM01x: public Modbus{
         sprintf(data, PZEM_MSG, voltage, current, power, energy);//, alm
         return data;
     }
-    
-    // Send Modbus RTU request
-    /* bool testCommunication() {
-        // Try to read voltage register (0x0000)
-        uint16_t value;
-        if (!readHldRegs(0x0000, 1, &value)) {
-            return false;
-        }
-        
-        float voltage = value * 0.1f;
-         Serial.printf(PSTR("  Test read - Voltage: %.1fV\n"), voltage);
-        return true;
-    } */
 
 };
 
@@ -98,45 +80,3 @@ class PZEM01x: public Modbus{
 
 #endif
 
-/* 
-char * read0(){
-        if(!inited) return nullptr;
-
-        uint8_t msg[] = {0x01, 0x04, 0x00, 0x00, 0x00, 0x08, 0x05, 0xCB};
-
-        uint32_t startTime = 0;
-
-        // send the command
-        //digitalWrite(MAX485_DE_RE, HIGH);
-        uint16_t crc = crc16(msg, 6);
-        msg[6] = crc & 0xFF;
-        msg[7] = (crc >> 8) & 0xFF;
-
-        Serial.print("TX: ");
-        printHexMessage( msg, sizeof(msg) );
-
-        delay( 10 );
-        Serial1.write( msg, sizeof(msg) );
-        Serial1.flush();
-        //digitalWrite(MAX485_DE_RE, LOW);
-        delay( 100 );
-        Serial.print("RX: ");
-        
-        // read any data received and print it out
-        startTime = millis();
-        uint8_t index = 0;
-        uint8_t buffer[64];;
-        
-        while (millis() - startTime <= MB_RES_TIMEOUT) {
-            if(hwserial->available()){
-                buffer[index++] = hwserial->read();
-                if (index >= 16)
-                    break;
-            }
-            yield();
-        }
-        printHexMessage(buffer, index);
-        return data;
-    }
-
-*/

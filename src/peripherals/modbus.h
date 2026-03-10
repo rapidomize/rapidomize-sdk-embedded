@@ -53,7 +53,7 @@ class Modbus: public Peripheral{
         
     public: 
 
-    Modbus(Preferences *prefs, int seq=1):Peripheral(prefs, seq){
+    Modbus(Preferences *prefs, ConProvider *conprv, int seq=1):Peripheral(prefs, conprv, seq){
         //some defaults
         conf["RX_PIN"] = 35;        // A - RX pin (GPIO35) 
         conf["TX_PIN"] = 32;        // B - TX pin (GPIO32)
@@ -92,7 +92,7 @@ class Modbus: public Peripheral{
         hwserial->begin(baudRate, SERIAL_8N1, rxPin, txPin);
         delay(100); // Allow time for initialization
 
-        Serial.printf(PSTR("%s setting up Modbus RTU. Slave: 0x%02X, RX: %d, TX: %d, DE: %d, Baud: %lu\n"), name,
+        conprv->log(PSTR("%s setting up Modbus RTU. Slave: 0x%02X, RX: %d, TX: %d, DE: %d, Baud: %lu\n"), name,
                      slvaddr, rxPin, txPin, dePin, baudRate);
 
         return true;
@@ -169,13 +169,13 @@ class Modbus: public Peripheral{
         
         int recvcnt = recv(response, explen);
         if (recvcnt < 5) {
-             Serial.printf(PSTR("Modbus response timeout or incomplete. Bytes read: %d\n"), recvcnt);
+             conprv->log(PSTR("Modbus response timeout or incomplete. Bytes read: %d\n"), recvcnt);
             return false;
         }
         
         // Check slave address
         if (response[0] != slvaddr) {
-             Serial.printf(PSTR("Wrong slave address in response. Expected: 0x%02X, Got: 0x%02X\n"), 
+             conprv->log(PSTR("Wrong slave address in response. Expected: 0x%02X, Got: 0x%02X\n"), 
                             slvaddr, response[0]);
             return false;
         }
@@ -190,12 +190,12 @@ class Modbus: public Peripheral{
                 case 0x04: err ="Slave error"; break;
                 default: err = "Unknown error";
             }
-            Serial.printf(PSTR("Modbus error: %s, code 0x%02X\n"), err.c_str(), response[1]);
+            conprv->log(PSTR("Modbus error: %s, code 0x%02X\n"), err.c_str(), response[1]);
             return false;
         }
         
         if (response[1] != MB_READ_IN_REG) {
-             Serial.printf(PSTR("Wrong function code in response. Expected: 0x%02X, Got: 0x%02X\n"), 
+             conprv->log(PSTR("Wrong function code in response. Expected: 0x%02X, Got: 0x%02X\n"), 
                             MB_READ_IN_REG, response[1]);
             return false;
         }
@@ -203,7 +203,7 @@ class Modbus: public Peripheral{
         // Check byte count
         uint8_t byteCount = response[2];
         if (byteCount != regCount * 2) {
-             Serial.printf(PSTR("Wrong byte count in response. Expected: %d, Got: %d\n"), 
+             conprv->log(PSTR("Wrong byte count in response. Expected: %d, Got: %d\n"), 
                             regCount * 2, byteCount);
             return false;
         }
@@ -212,7 +212,7 @@ class Modbus: public Peripheral{
         uint16_t receivedCRC = (response[recvcnt - 1] << 8) | response[recvcnt - 2];
         uint16_t calculatedCRC = crc16(response, recvcnt - 2);
         if (receivedCRC != calculatedCRC) {
-             Serial.printf(PSTR("CRC error. Received: 0x%04X, Calculated: 0x%04X\n"), 
+             conprv->log(PSTR("CRC error. Received: 0x%04X, Calculated: 0x%04X\n"), 
                             receivedCRC, calculatedCRC);
             return false;
         }
