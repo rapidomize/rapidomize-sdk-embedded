@@ -1,5 +1,5 @@
-# Embedded C/C++ SDK for IoT Edge Devices
-Build your own IoT controller solutions using this C/C++ SDK for ESP32 based devices. 
+# Rapidomize IoT Edge
+Embedded C/C++ SDK to build your own IoT controller solutions for ESP32 based devices. 
 Use it with Rapidomize IoT platform or with any MQTT server.
 
 
@@ -34,8 +34,16 @@ Device events will be shows in event logs, including peripheral messages.
 ![Firmware update](/img/logs.png)
 
 ### Reset
-You can reset the devices to its factory state. It will remove all the configurations you have saved, aka it will clear the preferences flash.
+You can reset the devices to its factory state. It will remove all the configurations & WiFi settings you have saved, aka it will clear the preferences flash.
 ![Factory Reset](/img/reset.png)
+
+
+# TODO
+- [ ] Additional peripherals (e.g. Ethernet, Relays, GSM, IR, ...etc)
+- [ ] Secure Login
+- [ ] Option to disable local AP.
+- [ ] Command control
+- [ ] Automataic OTA updates
 
 
 ## Firmware Installation (Flashing)
@@ -97,6 +105,12 @@ esptool -p PORT -b 460800 --chip esp32 write-flash -z --flash-mode dio --flash-f
 ```
 
 After successfully executing the command, esptool will hard reset the device, causing it to reboot and run the new firmware.
+
+#### Factory Reset using Esptool
+Run following command to reset the device to it's factory state.
+```
+esptool --chip esp32 --port PORT erase_region 0x9000 0x6000
+```
 
 ### Flashing with Flash Download Tool
 If you have a computer with Windows you can use `Flash Download Tool` to flash the firmware.
