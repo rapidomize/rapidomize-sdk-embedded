@@ -14,27 +14,33 @@ Use it with Rapidomize IoT platform or with any MQTT server.
 
 ### Wifi Setup
 Refer to above guideline to setup WiFi.
+
 <img src="/img/wifi.png" width="50%" alt="Wifi Setup"/>
 
 ### MQTT Setup
 Configure your MQTT broker (server) by setting the required topic, server IP addresses, client ID, server credentials and preferred publishing topic. The device publishes sensor messages to this topic.
+
 <img src="/img/mqtt.png" width="50%" alt="MQTT Setup"/>
 
 ### Peripheral H/W setup
 You can first configure pins and values, then setup MQTT configurations to receive MQTT messages from the device, then you can enable the device by clicking the checkbox and clicking save.
+
 <img src="/img/peripherals.png" width="50%" alt="peripherals Setup"/>
 
 ### Firmware update - OTA & File
 To update firmware using OTA (over the air) get the URL of the release binary, then enter it in the URL field in the OTA update section, click the update button and it will update the firmware and show you the progress, and once it is fully updated it will automatically reboot. 
 To update firmware using a local file, first download the latest release from [the firmware updates page](https://github.com/rapidomize/rapidomize-sdk-embedded/), and upload the file using the file tab. Click update. Once it is fully updated it will automatically reboot and start with the new firmware.
+
 <img src="/img/fw.png" width="50%" alt="Firmware update"/>
 
 ### Local logs
 Device events will be shows in event logs, including peripheral messages.
+
 <img src="/img/logs.png" width="50%" alt="logs"/>
 
 ### Factory Reset
 You can reset the devices to its factory state. It will remove all the configurations & WiFi settings you have saved, aka it will clear the preferences flash.
+
 <img src="/img/reset.png" width="50%" alt="reset"/>
 
 
